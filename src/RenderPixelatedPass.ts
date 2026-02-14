@@ -12,15 +12,15 @@ export default class RenderPixelatedPass extends Pass {
     normalRenderTarget: WebGLRenderTarget
     normalMaterial: THREE.Material
 
-    constructor( resolution: THREE.Vector2, scene: THREE.Scene, camera: THREE.Camera ) {
+    constructor(resolution: THREE.Vector2, scene: THREE.Scene, camera: THREE.Camera) {
         super()
         this.resolution = resolution
-        this.fsQuad = new FullScreenQuad( this.material() )
+        this.fsQuad = new FullScreenQuad(this.material())
         this.scene = scene
         this.camera = camera
 
-        this.rgbRenderTarget = pixelRenderTarget( resolution, THREE.RGBAFormat, true )
-        this.normalRenderTarget = pixelRenderTarget( resolution, THREE.RGBFormat, false )
+        this.rgbRenderTarget = pixelRenderTarget(resolution, THREE.RGBAFormat, true)
+        this.normalRenderTarget = pixelRenderTarget(resolution, THREE.RGBFormat, false)
 
         this.normalMaterial = new THREE.MeshNormalMaterial()
     }
@@ -29,32 +29,31 @@ export default class RenderPixelatedPass extends Pass {
         renderer: WebGLRenderer,
         writeBuffer: WebGLRenderTarget
     ) {
-        renderer.setRenderTarget( this.rgbRenderTarget )
-        renderer.render( this.scene, this.camera )
+        renderer.setRenderTarget(this.rgbRenderTarget)
+        renderer.render(this.scene, this.camera)
 
         const overrideMaterial_old = this.scene.overrideMaterial
-        renderer.setRenderTarget( this.normalRenderTarget )
+        renderer.setRenderTarget(this.normalRenderTarget)
         this.scene.overrideMaterial = this.normalMaterial
-        renderer.render( this.scene, this.camera )
+        renderer.render(this.scene, this.camera)
         this.scene.overrideMaterial = overrideMaterial_old
 
-        // @ts-ignore
-        const uniforms = this.fsQuad.material.uniforms
+        const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
         uniforms.tDiffuse.value = this.rgbRenderTarget.texture
         uniforms.tDepth.value = this.rgbRenderTarget.depthTexture
         uniforms.tNormal.value = this.normalRenderTarget.texture
 
-        if ( this.renderToScreen ) {
-            renderer.setRenderTarget( null )
+        if (this.renderToScreen) {
+            renderer.setRenderTarget(null)
         } else {
-            renderer.setRenderTarget( writeBuffer )
-            if ( this.clear ) renderer.clear()
+            renderer.setRenderTarget(writeBuffer)
+            if (this.clear) renderer.clear()
         }
-        this.fsQuad.render( renderer )
+        this.fsQuad.render(renderer)
     }
 
     material() {
-        return new THREE.ShaderMaterial( {
+        return new THREE.ShaderMaterial({
             uniforms: {
                 tDiffuse: { value: null },
                 tDepth: { value: null },
@@ -157,11 +156,11 @@ export default class RenderPixelatedPass extends Pass {
                     gl_FragColor = texel * coefficient;
                 }
                 `
-        } )
+        })
     }
 }
 
-function pixelRenderTarget( resolution: THREE.Vector2, pixelFormat: THREE.PixelFormat, depthTexture: boolean ) {
+function pixelRenderTarget(resolution: THREE.Vector2, pixelFormat: THREE.PixelFormat, depthTexture: boolean) {
     const renderTarget = new WebGLRenderTarget(
         resolution.x, resolution.y,
         !depthTexture ?

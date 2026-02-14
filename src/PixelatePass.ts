@@ -7,10 +7,10 @@ export default class PixelatePass extends Pass {
     fsQuad: FullScreenQuad
     resolution: THREE.Vector2
 
-    constructor( resolution: THREE.Vector2 ) {
+    constructor(resolution: THREE.Vector2) {
         super()
         this.resolution = resolution
-        this.fsQuad = new FullScreenQuad( this.material() )
+        this.fsQuad = new FullScreenQuad(this.material())
     }
 
     render(
@@ -18,20 +18,19 @@ export default class PixelatePass extends Pass {
         writeBuffer: WebGLRenderTarget,
         readBuffer: WebGLRenderTarget
     ) {
-        // @ts-ignore
-        const uniforms = this.fsQuad.material.uniforms
+        const uniforms = (this.fsQuad.material as THREE.ShaderMaterial).uniforms
         uniforms.tDiffuse.value = readBuffer.texture
-        if ( this.renderToScreen ) {
-            renderer.setRenderTarget( null )
+        if (this.renderToScreen) {
+            renderer.setRenderTarget(null)
         } else {
-            renderer.setRenderTarget( writeBuffer )
-            if ( this.clear ) renderer.clear()
+            renderer.setRenderTarget(writeBuffer)
+            if (this.clear) renderer.clear()
         }
-        this.fsQuad.render( renderer )
+        this.fsQuad.render(renderer)
     }
 
     material() {
-        return new THREE.ShaderMaterial( {
+        return new THREE.ShaderMaterial({
             uniforms: {
                 tDiffuse: { value: null },
                 resolution: {
@@ -62,6 +61,6 @@ export default class PixelatePass extends Pass {
                     gl_FragColor = texel;
                 }
                 `
-        } )
+        })
     }
 }
