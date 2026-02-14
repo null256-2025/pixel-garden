@@ -37,7 +37,7 @@ scene.add(new THREE.AmbientLight(0x4466aa, 1.2))
 
 // 月明かり: しっかり照らす DirectionalLight（青白い）
 const moonLight = new THREE.DirectionalLight(0x8899cc, 0.8)
-moonLight.position.set(-8, 12, -10)
+moonLight.position.set(-3, 5, -4)
 moonLight.castShadow = true
 moonLight.shadow.mapSize.set(2048, 2048)
 moonLight.shadow.camera.near = 0.1

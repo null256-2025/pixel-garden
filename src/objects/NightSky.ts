@@ -39,27 +39,27 @@ export function createNightSky(scene: THREE.Scene) {
     const moonMat = new THREE.MeshPhongMaterial({
         color: 0xfff8dc,
         emissive: 0xfff0a0,
-        emissiveIntensity: 0.6,
+        emissiveIntensity: 0.7,
         flatShading: true,
     })
     const moon = new THREE.Mesh(
-        new THREE.SphereGeometry(0.6, 8, 6),
+        new THREE.SphereGeometry(0.8, 8, 6),
         moonMat
     )
-    moon.position.set(-8, 12, -10)
+    moon.position.set(-3, 5, -4) // 箱庭のすぐ上に浮かぶ
     scene.add(moon)
 
     // 月の光芒（少し大きめの透明球で光のにじみを演出）
     const glowMat = new THREE.MeshPhongMaterial({
         color: 0xfff8dc,
         emissive: 0xfff0a0,
-        emissiveIntensity: 0.3,
+        emissiveIntensity: 0.4,
         transparent: true,
-        opacity: 0.15,
+        opacity: 0.2,
         flatShading: true,
     })
     const glow = new THREE.Mesh(
-        new THREE.SphereGeometry(1.0, 8, 6),
+        new THREE.SphereGeometry(1.3, 8, 6),
         glowMat
     )
     glow.position.copy(moon.position)
