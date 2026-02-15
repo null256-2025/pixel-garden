@@ -12,8 +12,8 @@ export function createFloatingIsland(scene: THREE.Scene) {
     // ──────────────────────────────────────────
     // 上面 — 草地
     // ──────────────────────────────────────────
-    const grassGeo = new THREE.CylinderGeometry(3.5, 3.5, 0.5, 16)
-    deformVertices(grassGeo, { topOnly: true, amount: 0.2 })
+    const grassGeo = new THREE.CylinderGeometry(3.5, 3.5, 0.5, 48)
+    deformVertices(grassGeo, { topOnly: true, amount: 0.05 })
     const grassMesh = new THREE.Mesh(grassGeo, new THREE.MeshPhongMaterial({
         color: 0x4a8c3f,
         flatShading: true,
