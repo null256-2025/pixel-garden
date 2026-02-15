@@ -13,6 +13,7 @@ export interface PixelEngineOptions {
     bloomRadius?: number
     bloomThreshold?: number
     cameraPosition?: THREE.Vector3
+    cameraTarget?: THREE.Vector3
 }
 
 export class PixelEngine {
@@ -30,6 +31,7 @@ export class PixelEngine {
             bloomRadius = 0.2,
             bloomThreshold = 0.9,
             cameraPosition = new THREE.Vector3(2, 2, 2),
+            cameraTarget = new THREE.Vector3(0, 0, 0),
         } = options
 
         const screenResolution = new Vector2(window.innerWidth, window.innerHeight)
@@ -38,15 +40,15 @@ export class PixelEngine {
         renderResolution.y |= 0
         const aspectRatio = screenResolution.x / screenResolution.y
 
-        // Camera
-        const camSize = 5
+        // Camera — 十分大きな視野で島全体を見渡す
+        const camSize = 10
         this.camera = new THREE.OrthographicCamera(
             -camSize * aspectRatio, camSize * aspectRatio,
             camSize, -camSize,
-            0.1, 100
+            0.1, 200
         )
         this.camera.position.copy(cameraPosition)
-        this.camera.lookAt(0, 0, 0)
+        this.camera.lookAt(cameraTarget)
 
         // Scene
         this.scene = new THREE.Scene()
@@ -66,7 +68,7 @@ export class PixelEngine {
 
         // Controls
         this.controls = new OrbitControls(this.camera, this.renderer.domElement)
-        this.controls.target.set(0, 2, 0)
+        this.controls.target.copy(cameraTarget)
         this.controls.update()
 
         // Resize handling

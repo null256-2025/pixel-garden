@@ -10,6 +10,7 @@ interface TreeConfig {
 
 /**
  * メイン島や小島に配置する木々
+ * メイン島の上面 y ≈ 0.8 を基準に配置
  */
 export function createSkyTrees(scene: THREE.Scene) {
     const trunkMat = new THREE.MeshPhongMaterial({ color: 0x6b4226, flatShading: true })
@@ -47,17 +48,15 @@ export function createSkyTrees(scene: THREE.Scene) {
         return group
     }
 
-    // メイン島の上に複数本配置
+    // メイン島の上面 y≈0.8 に木の根元を配置
     const treeConfigs: TreeConfig[] = [
-        // メイン島上
-        { x: -1.5, y: 3.4, z: -1.0, scale: 1.2, leafColor: 0x2d8a4e },
-        { x: 2.2, y: 3.4, z: 0.8, scale: 1.0, leafColor: 0x3a9c5a },
-        { x: -0.5, y: 3.4, z: 1.8, scale: 0.8, leafColor: 0x228b22 },
-        { x: 1.8, y: 3.4, z: -1.5, scale: 1.4, leafColor: 0x2e7d32 },
-        { x: -2.0, y: 3.4, z: 0.5, scale: 0.7, leafColor: 0x4caf50 },
-        { x: 0.5, y: 3.4, z: -2.0, scale: 0.9, leafColor: 0x33691e },
-        // 左手前小島に1本
-        { x: -7, y: 2.6, z: 5, scale: 0.3, leafColor: 0x388e3c },
+        // メイン島上（島の上面 y≈0.8、半径≈3.5 の範囲内）
+        { x: -1.5, y: 0.8, z: -1.0, scale: 1.2, leafColor: 0x2d8a4e },
+        { x: 2.2, y: 0.8, z: 0.8, scale: 1.0, leafColor: 0x3a9c5a },
+        { x: -0.5, y: 0.8, z: 1.8, scale: 0.8, leafColor: 0x228b22 },
+        { x: 1.8, y: 0.8, z: -1.5, scale: 1.4, leafColor: 0x2e7d32 },
+        { x: -2.0, y: 0.8, z: 0.5, scale: 0.7, leafColor: 0x4caf50 },
+        { x: 0.5, y: 0.8, z: -2.0, scale: 0.9, leafColor: 0x33691e },
     ]
 
     const trees: THREE.Group[] = []

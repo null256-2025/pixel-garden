@@ -15,7 +15,8 @@ const engine = new PixelEngine({
     bloomStrength: 0.3,
     bloomRadius: 0.2,
     bloomThreshold: 0.8,
-    cameraPosition: new THREE.Vector3(8, 10, 8),
+    cameraPosition: new THREE.Vector3(12, 8, 12),
+    cameraTarget: new THREE.Vector3(0, 0, 0),
 })
 
 const { scene } = engine
@@ -29,10 +30,10 @@ const sunLight = new THREE.DirectionalLight(0xfff4d6, 0.8)
 sunLight.position.set(50, 80, 50)
 sunLight.castShadow = true
 sunLight.shadow.mapSize.set(2048, 2048)
-sunLight.shadow.camera.left = -15
-sunLight.shadow.camera.right = 15
-sunLight.shadow.camera.top = 15
-sunLight.shadow.camera.bottom = -15
+sunLight.shadow.camera.left = -20
+sunLight.shadow.camera.right = 20
+sunLight.shadow.camera.top = 20
+sunLight.shadow.camera.bottom = -20
 sunLight.shadow.camera.far = 200
 scene.add(sunLight)
 

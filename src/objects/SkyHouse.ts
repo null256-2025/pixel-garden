@@ -2,11 +2,12 @@ import * as THREE from "three"
 
 /**
  * メイン島の上に建つ小さな家
+ * 島の上面は y ≈ 0.8 なので、家のベースを y=0.8 に
  */
 export function createSkyHouse(scene: THREE.Scene) {
     const group = new THREE.Group()
-    // メイン島の上面に配置
-    group.position.set(0.8, 3.6, -0.5)
+    // メイン島の上面(y≈0.8)の上に
+    group.position.set(0.8, 0.8, -0.5)
 
     const wallMat = new THREE.MeshPhongMaterial({ color: 0xf5e6c8, flatShading: true })
     const roofMat = new THREE.MeshPhongMaterial({ color: 0x8B4513, flatShading: true })
@@ -21,7 +22,7 @@ export function createSkyHouse(scene: THREE.Scene) {
     wall.receiveShadow = true
     group.add(wall)
 
-    // 屋根（三角形のプリズム）
+    // 屋根（三角プリズム）— ExtrudeGeometry は XY 平面に描いて Z 方向に押し出す
     const roofShape = new THREE.Shape()
     roofShape.moveTo(-0.75, 0)
     roofShape.lineTo(0.75, 0)
