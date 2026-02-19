@@ -6,7 +6,7 @@
         "three": "^0.131.3"
     },
     "scripts": {
-        "watch": "parcel src/index.html"
+        "watch": "parcel src/index.html --no-cache"
     },
     "devDependencies": {
         "@types/three": "^0.130.1",
