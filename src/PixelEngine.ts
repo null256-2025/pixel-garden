@@ -96,6 +96,14 @@ export class PixelEngine {
             this.controls.target.set(0, 0, 0)
             this.controls.enableDamping = true
             this.controls.dampingFactor = 0.05
+
+            // マウス操作のカスタマイズ
+            this.controls.mouseButtons = {
+                LEFT: null as any, // 左クリックでの回転を無効化（描画ツールと競合するため）
+                MIDDLE: THREE.MOUSE.ROTATE, // 中（ホイール）クリックで回転
+                RIGHT: THREE.MOUSE.PAN // 右クリックでパン移動
+            }
+
             this.controls.update()
         }
 

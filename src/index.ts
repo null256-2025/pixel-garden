@@ -7,7 +7,8 @@ import { createTrees, createGroundGrass } from "./objects/Trees"
 import { createHouse } from "./objects/House"
 import { createFlowerbeds } from "./objects/Flowerbeds"
 
-// =========================================
+import { PathDrawer } from "./editor/PathDrawer"
+import { DrawPalette } from "./editor/DrawPalette"// =========================================
 //  Pixel Garden — メインエントリポイント
 // =========================================
 
@@ -22,12 +23,17 @@ const engine = new PixelEngine({
 const { scene } = engine
 
 // --- シーンオブジェクトの配置 ---
-createGround(scene)
+const ground = createGround(scene)
 createHouse(scene)
 createTrees(scene)
 createGroundGrass(scene)
 createFlowerbeds(scene)
 const clouds = createClouds(scene)
+
+// --- 環境描画ツール ---
+const pathDrawer = new PathDrawer(engine.camera, scene, engine.renderer.domElement)
+pathDrawer.setGround(ground)
+new DrawPalette(pathDrawer)
 
 // --- ライティング（昼間の太陽光） ---
 // 環境光: やや暖色の柔らかい光

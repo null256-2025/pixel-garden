@@ -4,7 +4,7 @@ import * as THREE from "three"
  * 地面を作成してシーンに追加する
  * 上面は芝生の緑、側面・底面は土色の6面マルチマテリアル
  */
-export function createGround(scene: THREE.Scene) {
+export function createGround(scene: THREE.Scene): THREE.Object3D {
 
     const groundSize = 8
     const groundHeight = 0.4
@@ -35,4 +35,5 @@ export function createGround(scene: THREE.Scene) {
     ground.receiveShadow = true
     ground.castShadow = false
     scene.add(ground)
+    return ground;
 }
