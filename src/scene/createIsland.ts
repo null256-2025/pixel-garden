@@ -116,42 +116,89 @@ export interface TreeRef {
     phase: number
 }
 
+// 葉の色バリエーション（テーマに応じて明暗2色）
+function getLeafMats(baseColor: number): THREE.MeshLambertMaterial[] {
+    // ベース色から少し明るい色・暗い色を生成
+    const c = new THREE.Color(baseColor)
+    const bright = new THREE.Color().setHSL(c.getHSL({ h: 0, s: 0, l: 0 }).h, c.getHSL({ h: 0, s: 0, l: 0 }).s, Math.min(1, c.getHSL({ h: 0, s: 0, l: 0 }).l + 0.08))
+    const dark = new THREE.Color().setHSL(c.getHSL({ h: 0, s: 0, l: 0 }).h, c.getHSL({ h: 0, s: 0, l: 0 }).s, Math.max(0, c.getHSL({ h: 0, s: 0, l: 0 }).l - 0.06))
+    return [
+        new THREE.MeshLambertMaterial({ color: baseColor }),
+        new THREE.MeshLambertMaterial({ color: bright }),
+        new THREE.MeshLambertMaterial({ color: dark }),
+    ]
+}
+
+type TreeSize = 'small' | 'medium' | 'large'
+
+const TREE_PARAMS: Record<TreeSize, { trunkH: number; trunkR: number; leafR: number; leafY: number }> = {
+    small: { trunkH: 0.3, trunkR: 0.04, leafR: 0.2, leafY: 0.4 },
+    medium: { trunkH: 0.55, trunkR: 0.06, leafR: 0.3, leafY: 0.7 },
+    large: { trunkH: 0.75, trunkR: 0.08, leafR: 0.42, leafY: 1.0 },
+}
+
 function createTree(
     scene: THREE.Scene,
     x: number, z: number,
-    colors: ThemeColors
+    colors: ThemeColors,
+    size: TreeSize = 'medium'
 ): TreeRef {
-    const trunkGeo = new THREE.BoxGeometry(0.18, 0.7, 0.18)
-    const trunk = new THREE.Mesh(trunkGeo, mat(colors.treeTrunk))
-    trunk.position.set(x, 0.55, z)
+    const p = TREE_PARAMS[size]
+    const leafMats = getLeafMats(colors.treeLeaf)
+    const treeGroup = new THREE.Group()
+
+    // 幹（円柱）
+    const trunkGeo = new THREE.CylinderGeometry(p.trunkR, p.trunkR * 1.3, p.trunkH, 6)
+    const trunk = new THREE.Mesh(trunkGeo, new THREE.MeshLambertMaterial({ color: colors.treeTrunk }))
+    trunk.position.y = p.trunkH / 2
     trunk.castShadow = true
-    scene.add(trunk)
+    treeGroup.add(trunk)
 
-    const leafGeo = new THREE.BoxGeometry(0.7, 0.7, 0.7)
-    const foliage = new THREE.Mesh(leafGeo, mat(colors.treeLeaf))
-    foliage.position.set(x, 1.15, z)
+    // メイン葉（IcosahedronGeometry でもこもこ）
+    const leafGeo = new THREE.IcosahedronGeometry(p.leafR, 0)
+    const leafMat = leafMats[Math.floor(Math.random() * leafMats.length)]
+    const foliage = new THREE.Mesh(leafGeo, leafMat)
+    foliage.position.y = p.leafY
+    foliage.rotation.y = Math.random() * Math.PI
     foliage.castShadow = true
-    scene.add(foliage)
+    treeGroup.add(foliage)
 
-    // 上の葉
-    const topGeo = new THREE.BoxGeometry(0.45, 0.45, 0.45)
-    const top = new THREE.Mesh(topGeo, mat(colors.treeLeaf))
-    top.position.set(x, 1.65, z)
-    top.castShadow = true
-    scene.add(top)
+    // サブ葉（小さい球を周囲にずらして配置 → もこもこ感 up）
+    if (size !== 'small') {
+        const subLeafCount = size === 'large' ? 3 : 2
+        for (let i = 0; i < subLeafCount; i++) {
+            const angle = (i / subLeafCount) * Math.PI * 2 + Math.random() * 0.5
+            const subR = p.leafR * (0.5 + Math.random() * 0.3)
+            const subGeo = new THREE.IcosahedronGeometry(subR, 0)
+            const subLeafMat = leafMats[Math.floor(Math.random() * leafMats.length)]
+            const subLeaf = new THREE.Mesh(subGeo, subLeafMat)
+            subLeaf.position.set(
+                Math.cos(angle) * p.leafR * 0.55,
+                p.leafY - 0.05 + Math.random() * 0.1,
+                Math.sin(angle) * p.leafR * 0.55
+            )
+            subLeaf.castShadow = true
+            treeGroup.add(subLeaf)
+        }
+    }
 
-    return { foliage, baseY: 1.15, phase: Math.random() * Math.PI * 2 }
+    treeGroup.position.set(x, 0.2, z)
+    scene.add(treeGroup)
+
+    return { foliage, baseY: p.leafY + 0.2, phase: Math.random() * Math.PI * 2 }
 }
 
 function createTrees(scene: THREE.Scene, colors: ThemeColors): TreeRef[] {
-    const positions: [number, number][] = [
-        [-2.5, -1.8],
-        [-3.0, 0.8],
-        [2.8, -0.5],
-        [1.5, 2.8],
-        [-1.2, 2.5],
+    const placements: [number, number, TreeSize][] = [
+        [-2.5, -1.8, 'large'],
+        [-3.0, 0.8, 'large'],
+        [2.8, -0.5, 'large'],
+        [1.5, 2.8, 'medium'],
+        [-1.2, 2.5, 'medium'],
+        [3.2, -2.0, 'small'],
+        [-2.0, 3.0, 'small'],
     ]
-    return positions.map(([x, z]) => createTree(scene, x, z, colors))
+    return placements.map(([x, z, size]) => createTree(scene, x, z, colors, size))
 }
 
 // ---- 家 ----
@@ -192,22 +239,29 @@ export interface CloudRef {
     speed: number
 }
 
-function createCloud(scene: THREE.Scene, colors: ThemeColors): CloudRef {
+function createCloud(scene: THREE.Scene, colors: ThemeColors, initX = -6): CloudRef {
     const group = new THREE.Group()
-    const cloudMat = mat(colors.cloud)
+    const cloudMat = new THREE.MeshLambertMaterial({
+        color: colors.cloud,
+        transparent: true,
+        opacity: 0.88,
+    })
+
+    // SphereGeometry でふわふわ丸い雲
     const parts: [number, number, number, number][] = [
-        [0, 0, 0, 0.4],
-        [0.35, 0.1, 0, 0.3],
-        [-0.35, 0.05, 0, 0.28],
-        [0.1, 0.2, 0, 0.22],
+        [0, 0, 0, 0.42],  // 中央（大）
+        [0.42, -0.05, 0.05, 0.32], // 右
+        [-0.40, -0.05, 0, 0.28], // 左
+        [0.10, 0.18, 0, 0.22], // 上
+        [0.05, 0.05, -0.3, 0.28], // 奥
     ]
     for (const [x, y, z, r] of parts) {
-        const geo = new THREE.BoxGeometry(r * 2, r * 1.2, r * 1.5)
+        const geo = new THREE.SphereGeometry(r, 6, 4)
         const mesh = new THREE.Mesh(geo, cloudMat)
         mesh.position.set(x, y, z)
         group.add(mesh)
     }
-    group.position.set(-6, 3.5, 0)
+    group.position.set(initX, 3.5, 0)
     scene.add(group)
     return { group, speed: 0.4 }
 }
