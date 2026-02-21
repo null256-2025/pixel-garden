@@ -8,6 +8,9 @@ import { createHouse } from "./objects/House"
 import { createFlowerbeds } from "./objects/Flowerbeds"
 
 import { PathDrawer } from "./editor/PathDrawer"
+import { TerrainSculptor } from "./editor/TerrainSculptor"
+import { NaturePlacer } from "./editor/NaturePlacer"
+import { GrowthManager } from "./editor/GrowthManager"
 import { DrawPalette } from "./editor/DrawPalette"// =========================================
 //  Pixel Garden — メインエントリポイント
 // =========================================
@@ -25,15 +28,35 @@ const { scene } = engine
 // --- シーンオブジェクトの配置 ---
 const ground = createGround(scene)
 createHouse(scene)
-createTrees(scene)
-createGroundGrass(scene)
-createFlowerbeds(scene)
+const trees = createTrees(scene)
+const grassPatches = createGroundGrass(scene)
+const flowerbeds = createFlowerbeds(scene)
 const clouds = createClouds(scene)
+
+// List of objects that should ride the terrain height
+const trackingObjects: THREE.Group[] = [...trees, ...grassPatches, ...flowerbeds]
 
 // --- 環境描画ツール ---
 const pathDrawer = new PathDrawer(engine.camera, scene, engine.renderer.domElement)
 pathDrawer.setGround(ground)
-new DrawPalette(pathDrawer)
+
+const terrainSculptor = new TerrainSculptor(engine.camera, engine.renderer.domElement)
+terrainSculptor.setGround(ground)
+
+const growthManager = new GrowthManager(scene)
+
+const naturePlacer = new NaturePlacer(engine.camera, scene, engine.renderer.domElement, terrainSculptor, growthManager)
+naturePlacer.setGround(ground)
+naturePlacer.initTracking(trackingObjects)
+
+// Keep objects on top of the terrain when sculpted
+terrainSculptor.onTerrainUpdate((sculptor) => {
+    trackingObjects.forEach(obj => {
+        obj.position.y = sculptor.getGroundHeightAtXZ(obj.position.x, obj.position.z)
+    });
+});
+
+new DrawPalette(pathDrawer, terrainSculptor, naturePlacer)
 
 // --- ライティング（昼間の太陽光） ---
 // 環境光: やや暖色の柔らかい光
@@ -55,4 +78,5 @@ scene.add(sunLight)
 // --- アニメーション開始 ---
 engine.start(() => {
     updateClouds(clouds)
+    growthManager.update(performance.now())
 })

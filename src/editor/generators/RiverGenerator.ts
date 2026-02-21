@@ -14,8 +14,8 @@ export class RiverGenerator {
         });
     }
 
-    public generate(points: THREE.Vector3[]) {
-        if (points.length < 2) return;
+    public generate(points: THREE.Vector3[]): THREE.Mesh | null {
+        if (points.length < 2) return null;
 
         // Create a smooth curve through the points
         const curve = new THREE.CatmullRomCurve3(points);
@@ -47,6 +47,16 @@ export class RiverGenerator {
         mesh.receiveShadow = true;
         this.scene.add(mesh);
         this.riverMeshes.push(mesh);
+        return mesh;
+    }
+
+    public remove(mesh: THREE.Mesh) {
+        const idx = this.riverMeshes.indexOf(mesh);
+        if (idx !== -1) {
+            this.riverMeshes.splice(idx, 1);
+            this.scene.remove(mesh);
+            mesh.geometry.dispose();
+        }
     }
 
     public clear() {

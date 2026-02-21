@@ -1,15 +1,16 @@
 import * as THREE from 'three';
 import { RiverGenerator } from './generators/RiverGenerator';
 import { PathGenerator } from './generators/PathGenerator';
+import { CommandHistory } from './CommandHistory';
 
-export type ToolType = 'River' | 'Path';
+export type ToolType = 'River' | 'Path' | 'Raise' | 'Lower';
 
 export class PathDrawer {
     private raycaster = new THREE.Raycaster();
     private mouse = new THREE.Vector2();
     private isDrawing = false;
     private currentPath: THREE.Vector3[] = [];
-    private currentTool: ToolType = 'River';
+    private currentTool: ToolType | null = 'River';
 
     // Preview line during drawing
     private lineGeo = new THREE.BufferGeometry();
@@ -44,16 +45,21 @@ export class PathDrawer {
         this.groundMesh = ground;
     }
 
-    public setTool(tool: ToolType) {
+    public setTool(tool: ToolType | null) {
         this.currentTool = tool;
+        if (!tool) {
+            this.lineGeo.setFromPoints([]); // Clear preview
+            return;
+        }
+
         if (tool === 'River') {
             this.lineMat.color.setHex(0x60a5fa); // Blue preview
-        } else {
+        } else if (tool === 'Path') {
             this.lineMat.color.setHex(0xc4b28f); // Path preview
         }
     }
 
-    public getCurrentTool(): ToolType {
+    public getCurrentTool(): ToolType | null {
         return this.currentTool;
     }
 
@@ -76,7 +82,7 @@ export class PathDrawer {
     }
 
     private onPointerDown(event: PointerEvent) {
-        if (event.button !== 0) return; // Only draw on left click
+        if (event.button !== 0 || this.currentTool !== 'River' && this.currentTool !== 'Path') return; // Only draw on left click with valid tool
         this.updateMouse(event);
         const hitPoint = this.getIntersection();
 
@@ -129,10 +135,23 @@ export class PathDrawer {
     }
 
     private generatePathMesh() {
+        let generatedMesh: THREE.Mesh | null = null;
         if (this.currentTool === 'River') {
-            this.riverGenerator.generate(this.currentPath);
-        } else {
-            this.pathGenerator.generate(this.currentPath);
+            generatedMesh = this.riverGenerator.generate(this.currentPath);
+        } else if (this.currentTool === 'Path') {
+            generatedMesh = this.pathGenerator.generate(this.currentPath);
+        }
+
+        if (generatedMesh) {
+            const mesh = generatedMesh;
+            const tool = this.currentTool;
+            CommandHistory.push(() => {
+                if (tool === 'River') {
+                    this.riverGenerator.remove(mesh);
+                } else if (tool === 'Path') {
+                    this.pathGenerator.remove(mesh);
+                }
+            });
         }
     }
 

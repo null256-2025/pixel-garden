@@ -12,8 +12,8 @@ export class PathGenerator {
         });
     }
 
-    public generate(points: THREE.Vector3[]) {
-        if (points.length < 2) return;
+    public generate(points: THREE.Vector3[]): THREE.Mesh | null {
+        if (points.length < 2) return null;
 
         // Create a smooth curve through the points
         const curve = new THREE.CatmullRomCurve3(points);
@@ -45,6 +45,16 @@ export class PathGenerator {
         mesh.receiveShadow = true;
         this.scene.add(mesh);
         this.pathMeshes.push(mesh);
+        return mesh;
+    }
+
+    public remove(mesh: THREE.Mesh) {
+        const idx = this.pathMeshes.indexOf(mesh);
+        if (idx !== -1) {
+            this.pathMeshes.splice(idx, 1);
+            this.scene.remove(mesh);
+            mesh.geometry.dispose();
+        }
     }
 
     public clear() {

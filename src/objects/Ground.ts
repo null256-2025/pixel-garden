@@ -11,12 +11,16 @@ export function createGround(scene: THREE.Scene): THREE.Object3D {
 
     // 6面それぞれに異なるマテリアルを適用
     // BoxGeometry の面順序: +X, -X, +Y(上面), -Y(底面), +Z, -Z
+    const dirtColor = new THREE.Color(0x8B6914);
+
     const grassMat = new THREE.MeshPhongMaterial({
-        color: 0x5a9a3c, // 上面: 草の緑（落ち着いた自然な緑）
+        color: 0xffffff, // White so vertex colors aren't tinted
+        vertexColors: true,
         flatShading: true
     })
+
     const dirtMat = new THREE.MeshPhongMaterial({
-        color: 0x8B6914, // 側面・底面: 土色
+        color: dirtColor, // 側面・底面: 土色
         flatShading: true
     })
 
@@ -29,8 +33,33 @@ export function createGround(scene: THREE.Scene): THREE.Object3D {
         dirtMat  // -Z 側面
     ]
 
-    const groundGeo = new THREE.BoxGeometry(groundSize, groundHeight, groundSize)
-    const ground = new THREE.Mesh(groundGeo, groundMaterials)
+    // Subdivide the top face into a grid for terrain sculpting
+    const segments = 32;
+    const groundGeo = new THREE.BoxGeometry(groundSize, groundHeight, groundSize, segments, 1, segments);
+
+    // Convert to non-indexed geometry so flatShading works perfectly with displaced vertices
+    const nonIndexedGeo = groundGeo.toNonIndexed();
+
+    // Setup vertex colors
+    const posAttr = nonIndexedGeo.attributes.position;
+    const colors = new Float32Array(posAttr.count * 3);
+    const cGrass = new THREE.Color(0x5a9a3c);
+
+    // Default top-face to green, others no vertex color needed but we give them white so they don't block
+    for (let i = 0; i < posAttr.count; i++) {
+        if (posAttr.getY(i) > 0) {
+            colors[i * 3 + 0] = cGrass.r;
+            colors[i * 3 + 1] = cGrass.g;
+            colors[i * 3 + 2] = cGrass.b;
+        } else {
+            colors[i * 3 + 0] = 1.0;
+            colors[i * 3 + 1] = 1.0;
+            colors[i * 3 + 2] = 1.0;
+        }
+    }
+    nonIndexedGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+
+    const ground = new THREE.Mesh(nonIndexedGeo, groundMaterials)
     ground.position.y = -groundHeight / 2 // 上面がちょうど y=0 になるように
     ground.receiveShadow = true
     ground.castShadow = false
