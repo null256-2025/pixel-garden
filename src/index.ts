@@ -42,6 +42,7 @@ pathDrawer.setGround(ground)
 
 const terrainSculptor = new TerrainSculptor(engine.camera, engine.renderer.domElement)
 terrainSculptor.setGround(ground)
+pathDrawer.setTerrainSculptor(terrainSculptor)
 
 const growthManager = new GrowthManager(scene)
 

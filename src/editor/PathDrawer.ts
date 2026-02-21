@@ -2,6 +2,7 @@ import * as THREE from 'three';
 import { RiverGenerator } from './generators/RiverGenerator';
 import { PathGenerator } from './generators/PathGenerator';
 import { CommandHistory } from './CommandHistory';
+import { TerrainSculptor } from './TerrainSculptor';
 
 export type ToolType = 'River' | 'Path' | 'Raise' | 'Lower';
 
@@ -22,6 +23,7 @@ export class PathDrawer {
 
     private riverGenerator: RiverGenerator;
     private pathGenerator: PathGenerator;
+    private terrainSculptor: TerrainSculptor | null = null;
 
     constructor(
         private camera: THREE.Camera,
@@ -43,6 +45,16 @@ export class PathDrawer {
 
     public setGround(ground: THREE.Object3D) {
         this.groundMesh = ground;
+    }
+
+    public setTerrainSculptor(sculptor: TerrainSculptor) {
+        this.terrainSculptor = sculptor;
+
+        // Listen for terrain updates (e.g. from the sculptor tool or undo actions)
+        // to adjust river heights dynamically to stay inside their carved trench or on top of raised ground
+        this.terrainSculptor.onTerrainUpdate((s) => {
+            this.riverGenerator.rebuildAll((x, z) => s.getGroundHeightAtXZ(x, z));
+        });
     }
 
     public setTool(tool: ToolType | null) {
@@ -136,8 +148,27 @@ export class PathDrawer {
 
     private generatePathMesh() {
         let generatedMesh: THREE.Mesh | null = null;
+        let terrainSnapshot: any = null;
+
         if (this.currentTool === 'River') {
-            generatedMesh = this.riverGenerator.generate(this.currentPath);
+            // Take snapshot of terrain before carving
+            if (this.terrainSculptor) {
+                terrainSnapshot = this.terrainSculptor.getSnapshot();
+
+                // Carve the trench
+                const trenchRadius = 0.6; // Slightly wider than river (0.8 / 2 = 0.4)
+                const trenchDepth = 0.2;
+                this.terrainSculptor.carveTrench(this.currentPath, trenchRadius, trenchDepth);
+            }
+
+            // We removed the manual path adjustment here so RiverGenerator can calculate 
+            // the physics-based water level (lakes, waterfalls) directly.
+
+            const getHeight = (x: number, z: number) => {
+                return this.terrainSculptor ? this.terrainSculptor.getGroundHeightAtXZ(x, z) : 0;
+            };
+
+            generatedMesh = this.riverGenerator.generate(this.currentPath, getHeight);
         } else if (this.currentTool === 'Path') {
             generatedMesh = this.pathGenerator.generate(this.currentPath);
         }
@@ -145,9 +176,13 @@ export class PathDrawer {
         if (generatedMesh) {
             const mesh = generatedMesh;
             const tool = this.currentTool;
+            const savedSnapshot = terrainSnapshot;
             CommandHistory.push(() => {
                 if (tool === 'River') {
                     this.riverGenerator.remove(mesh);
+                    if (this.terrainSculptor && savedSnapshot) {
+                        this.terrainSculptor.restoreSnapshot(savedSnapshot);
+                    }
                 } else if (tool === 'Path') {
                     this.pathGenerator.remove(mesh);
                 }

@@ -19,11 +19,21 @@ export class RockGenerator {
         // Displace vertices to make it look like a natural, jagged rock
         const positions = geometry.attributes.position;
         const v = new THREE.Vector3();
+        const displacements = new Map<string, number>();
 
         for (let i = 0; i < positions.count; i++) {
             v.fromBufferAttribute(positions, i);
-            // Random displacement factor
-            v.multiplyScalar(1.0 + (Math.random() - 0.5) * 0.4);
+
+            // Round coordinates to group vertices that share the same initial position
+            const key = `${v.x.toFixed(4)},${v.y.toFixed(4)},${v.z.toFixed(4)}`;
+
+            let factor = displacements.get(key);
+            if (factor === undefined) {
+                factor = 1.0 + (Math.random() - 0.5) * 0.4;
+                displacements.set(key, factor);
+            }
+
+            v.multiplyScalar(factor);
             positions.setXYZ(i, v.x, v.y, v.z);
         }
 

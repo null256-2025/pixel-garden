@@ -248,4 +248,110 @@ export class TerrainSculptor {
         // Notify listeners
         this.updateListeners.forEach(cb => cb(this));
     }
+
+    // --- River Trench Carving --- //
+
+    public getSnapshot() {
+        if (!this.groundMesh) return null;
+        return {
+            positions: new Float32Array(this.groundMesh.geometry.attributes.position.array),
+            colors: this.groundMesh.geometry.attributes.color ? new Float32Array(this.groundMesh.geometry.attributes.color.array) : null
+        };
+    }
+
+    public restoreSnapshot(snapshot: { positions: Float32Array, colors: Float32Array | null }) {
+        if (!this.groundMesh) return;
+        const geometry = this.groundMesh.geometry;
+        (geometry.attributes.position.array as Float32Array).set(snapshot.positions);
+        geometry.attributes.position.needsUpdate = true;
+        if (snapshot.colors && geometry.attributes.color) {
+            (geometry.attributes.color.array as Float32Array).set(snapshot.colors);
+            geometry.attributes.color.needsUpdate = true;
+        }
+        geometry.computeVertexNormals();
+        geometry.computeBoundingBox();
+        geometry.computeBoundingSphere();
+        this.updateListeners.forEach(cb => cb(this));
+    }
+
+    public carveTrench(pathPoints: THREE.Vector3[], radius: number, depth: number) {
+        if (!this.groundMesh || pathPoints.length < 2) return;
+
+        const geometry = this.groundMesh.geometry;
+        const positions = geometry.attributes.position;
+        const colors = geometry.attributes.color;
+
+        let verticesModified = false;
+        const v = new THREE.Vector3();
+        const cGrass = new THREE.Color(0x5a9a3c);
+        const cDirt = new THREE.Color(0x8B6914);
+
+        // Convert path points to local space
+        const localPath = pathPoints.map(p => this.groundMesh!.worldToLocal(p.clone()));
+
+        // Helper to find minimum distance from a point to a line segment
+        const distToSegmentSq = (p: THREE.Vector3, v: THREE.Vector3, w: THREE.Vector3) => {
+            const l2 = v.distanceToSquared(w);
+            if (l2 === 0) return p.distanceToSquared(v);
+            let t = ((p.x - v.x) * (w.x - v.x) + (p.z - v.z) * (w.z - v.z)) / l2;
+            t = Math.max(0, Math.min(1, t));
+            const projX = v.x + t * (w.x - v.x);
+            const projZ = v.z + t * (w.z - v.z);
+            const dx = p.x - projX;
+            const dz = p.z - projZ;
+            return dx * dx + dz * dz;
+        };
+
+        const radiusSq = radius * radius;
+
+        for (let i = 0; i < positions.count; i++) {
+            v.fromBufferAttribute(positions, i);
+
+            // Only modify top surface
+            if (v.y < 0) continue;
+
+            const worldV = this.groundMesh.localToWorld(v.clone());
+            if (this.isVertexProtected(worldV)) {
+                continue;
+            }
+
+            // Find closest distance to any segment in the path
+            let minDistSq = Infinity;
+            for (let j = 0; j < localPath.length - 1; j++) {
+                const dSq = distToSegmentSq(v, localPath[j], localPath[j + 1]);
+                if (dSq < minDistSq) minDistSq = dSq;
+            }
+
+            if (minDistSq < radiusSq) {
+                const dist = Math.sqrt(minDistSq);
+                // U-shape profile for the trench
+                const profile = Math.pow(dist / radius, 2);
+                const drop = depth * (1 - profile);
+
+                // Lower the terrain
+                v.y -= drop;
+                v.y = Math.max(v.y, 0.05); // Don't go below the bottom dirt layer too much
+
+                positions.setY(i, v.y);
+
+                // Update vertex color to look like dirt/mud at the bottom
+                if (colors) {
+                    const dirtFactor = 1.0 - THREE.MathUtils.smoothstep(v.y, 0.05, 0.18);
+                    const mixed = cGrass.clone().lerp(cDirt, dirtFactor);
+                    colors.setXYZ(i, mixed.r, mixed.g, mixed.b);
+                }
+
+                verticesModified = true;
+            }
+        }
+
+        if (verticesModified) {
+            positions.needsUpdate = true;
+            if (colors) colors.needsUpdate = true;
+            geometry.computeVertexNormals();
+            geometry.computeBoundingBox();
+            geometry.computeBoundingSphere();
+            this.updateListeners.forEach(cb => cb(this));
+        }
+    }
 }
