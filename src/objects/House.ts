@@ -36,9 +36,6 @@ export function createHouse(scene: THREE.Scene) {
     const chimneyMat = new THREE.MeshPhongMaterial({
         color: 0x7a6a5a, flatShading: true
     })
-    const pathMat = new THREE.MeshPhongMaterial({
-        color: 0xc4b28f, flatShading: true
-    })
 
     // ========== 寸法定義 ==========
     const wallW = 1.8
@@ -218,14 +215,4 @@ export function createHouse(scene: THREE.Scene) {
     // ========== 家全体を配置 ==========
     houseGroup.position.set(houseX, 0, houseZ)
     scene.add(houseGroup)
-
-    // ========== 小道（玄関からの道） ==========
-    const pathWidth = 0.7
-    const pathLength = 2.5
-    const pathHeight = 0.03
-    const pathGeo = new THREE.BoxGeometry(pathWidth, pathHeight, pathLength)
-    const path = new THREE.Mesh(pathGeo, pathMat)
-    path.position.set(houseX, pathHeight / 2, houseZ + wallD / 2 + porchD + pathLength / 2 + 0.05)
-    path.receiveShadow = true
-    scene.add(path)
 }

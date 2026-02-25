@@ -11,7 +11,8 @@ import { PathDrawer } from "./editor/PathDrawer"
 import { TerrainSculptor } from "./editor/TerrainSculptor"
 import { NaturePlacer } from "./editor/NaturePlacer"
 import { GrowthManager } from "./editor/GrowthManager"
-import { DrawPalette } from "./editor/DrawPalette"// =========================================
+import { DrawPalette } from "./editor/DrawPalette"
+import { DestroyerTool } from "./editor/DestroyerTool"// =========================================
 //  Pixel Garden — メインエントリポイント
 // =========================================
 
@@ -50,6 +51,8 @@ const naturePlacer = new NaturePlacer(engine.camera, scene, engine.renderer.domE
 naturePlacer.setGround(ground)
 naturePlacer.initTracking(trackingObjects)
 
+const destroyerTool = new DestroyerTool(engine.camera, scene, engine.renderer.domElement, engine.physics, trackingObjects)
+
 // Keep objects on top of the terrain when sculpted
 terrainSculptor.onTerrainUpdate((sculptor) => {
     trackingObjects.forEach(obj => {
@@ -57,7 +60,7 @@ terrainSculptor.onTerrainUpdate((sculptor) => {
     });
 });
 
-new DrawPalette(pathDrawer, terrainSculptor, naturePlacer)
+new DrawPalette(pathDrawer, terrainSculptor, naturePlacer, destroyerTool)
 
 // --- ライティング（昼間の太陽光） ---
 // 環境光: やや暖色の柔らかい光

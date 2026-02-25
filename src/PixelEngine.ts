@@ -9,6 +9,8 @@ import { UnrealBloomPass } from 'three/examples/jsm/postprocessing/UnrealBloomPa
 import RenderPixelatedPass from "./RenderPixelatedPass"
 import PixelatePass from "./PixelatePass"
 
+import { PhysicsWorld } from "./physics/PhysicsWorld"
+
 // =========================================
 //  PixelEngine 設定オプション
 // =========================================
@@ -41,8 +43,10 @@ export class PixelEngine {
     renderer: THREE.WebGLRenderer
     composer: EffectComposer
     controls: OrbitControls | null = null
+    physics: PhysicsWorld
 
-    private _onUpdate: ((time: number) => void) | null = null
+    private _lastTime = performance.now() / 1000
+    private _onUpdate: ((time: number, dt: number) => void) | null = null
 
     constructor(options: PixelEngineOptions = {}) {
 
@@ -90,6 +94,9 @@ export class PixelEngine {
         this.composer.addPass(bloomPass)
         this.composer.addPass(new PixelatePass(renderResolution))
 
+        // --- 物理エンジン ---
+        this.physics = new PhysicsWorld()
+
         // --- カメラ操作 ---
         if (enableControls) {
             this.controls = new OrbitControls(this.camera, this.renderer.domElement)
@@ -122,15 +129,20 @@ export class PixelEngine {
     }
 
     /** アニメーションループを開始する */
-    start(onUpdate?: (time: number) => void) {
+    start(onUpdate?: (time: number, dt: number) => void) {
         this._onUpdate = onUpdate ?? null
+        this._lastTime = performance.now() / 1000
         this._animate()
     }
 
     private _animate = () => {
         requestAnimationFrame(this._animate)
         const t = performance.now() / 1000
-        this._onUpdate?.(t)
+        const dt = Math.min(t - this._lastTime, 0.1) // limit dt to avoid huge jumps
+        this._lastTime = t
+
+        this.physics.update(dt)
+        this._onUpdate?.(t, dt)
         this.controls?.update()
         this.composer.render()
     }

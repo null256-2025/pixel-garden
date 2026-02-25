@@ -111,6 +111,7 @@ export function makeFlowerbed(
         }
     }
 
+    bedGroup.userData.type = 'flowerbed'
     bedGroup.position.set(x, 0, z)
     bedGroup.rotation.y = rotY
     scene.add(bedGroup)

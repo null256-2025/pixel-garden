@@ -1,10 +1,11 @@
 import { PathDrawer, ToolType } from './PathDrawer';
 import { TerrainSculptor } from './TerrainSculptor';
 import { NaturePlacer, NatureToolType } from './NaturePlacer';
+import { DestroyerTool } from './DestroyerTool';
 import { CommandHistory } from './CommandHistory';
 
 type Category = 'Terrain' | 'Decoration' | 'Nature';
-export type ExtendedToolType = ToolType | 'Tree' | 'Seed' | 'Grass' | 'Rock';
+export type ExtendedToolType = ToolType | 'Tree' | 'Seed' | 'Grass' | 'Rock' | 'Destroy';
 
 export class DrawPalette {
     private container: HTMLDivElement;
@@ -29,14 +30,16 @@ export class DrawPalette {
             { type: 'Tree', label: '🌲 木' },
             { type: 'Seed', label: '🌱 種(花)' },
             { type: 'Grass', label: '🌿 草' },
-            { type: 'Rock', label: '🪨 岩' }
+            { type: 'Rock', label: '🪨 岩' },
+            { type: 'Destroy', label: '🪓 オノ(破壊)' }
         ]
     };
 
     constructor(
         private pathDrawer: PathDrawer,
         private terrainSculptor: TerrainSculptor,
-        private naturePlacer: NaturePlacer
+        private naturePlacer: NaturePlacer,
+        private destroyerTool: DestroyerTool
     ) {
         this.container = document.createElement('div');
         this.container.style.position = 'absolute';
@@ -182,15 +185,23 @@ export class DrawPalette {
             this.terrainSculptor.setTool(selectedTool);
             this.pathDrawer.setTool(null);
             this.naturePlacer.setTool(null);
+            this.destroyerTool.detachEvents();
         } else if (selectedTool === 'River' || selectedTool === 'Path') {
             this.pathDrawer.setTool(selectedTool);
             this.terrainSculptor.setTool(null);
             this.naturePlacer.setTool(null);
+            this.destroyerTool.detachEvents();
+        } else if (selectedTool === 'Destroy') {
+            this.pathDrawer.setTool(null);
+            this.terrainSculptor.setTool(null);
+            this.naturePlacer.setTool(null);
+            this.destroyerTool.attachEvents();
         } else {
             // Nature tools
             this.pathDrawer.setTool(null);
             this.terrainSculptor.setTool(null);
             this.naturePlacer.setTool(selectedTool as NatureToolType);
+            this.destroyerTool.detachEvents();
         }
 
         this.toolButtons.forEach((btn, toolType) => {

@@ -23,8 +23,9 @@ export class TerrainSculptor {
     private updateListeners: ((sculptor: TerrainSculptor) => void)[] = [];
 
     // House protection zone details
-    // Assuming house is centered near origin. Let's protect an area of 3x3 around origin.
-    private protectedZone = { minX: -2.0, maxX: 2.0, minZ: -1.5, maxZ: 1.5 };
+    // Protect only the area strictly under the house footprint to allow editing right up to the edges.
+    // House walls roughly span X: -0.9 to 0.9, Z: -1.15 to 0.15
+    private protectedZone = { minX: -0.8, maxX: 0.8, minZ: -1.0, maxZ: 0.0 };
 
     constructor(
         private camera: THREE.Camera,

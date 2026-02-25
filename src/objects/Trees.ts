@@ -61,6 +61,7 @@ export function makeTree(scene: THREE.Scene, x: number, z: number, size: 'small'
         }
     }
 
+    treeGroup.userData.type = 'tree'
     treeGroup.position.set(x, 0, z)
     treeGroup.rotation.y = Math.random() * Math.PI * 2
     const scale = 0.8 + Math.random() * 0.4
