@@ -1,68 +1,97 @@
 import * as THREE from "three"
 
 /**
- * 地面を作成してシーンに追加する
- * 上面は芝生の緑、側面・底面は土色の6面マルチマテリアル
+ * ネオンシティの台座（地面）を作成してシーンに追加する
+ * - ダークアスファルトの上面
+ * - コンクリート風の側面
+ * - 台座の縁にオレンジのエッジグロー
  */
 export function createGround(scene: THREE.Scene): THREE.Object3D {
 
-    const groundSize = 8
+    const groundSize = 14
     const groundHeight = 0.4
 
-    // 6面それぞれに異なるマテリアルを適用
-    // BoxGeometry の面順序: +X, -X, +Y(上面), -Y(底面), +Z, -Z
-    const dirtColor = new THREE.Color(0x8B6914);
+    // ===== 台座本体 =====
+    const concreteSideColor = new THREE.Color(0x2a2a3e)
 
-    const grassMat = new THREE.MeshPhongMaterial({
-        color: 0xffffff, // White so vertex colors aren't tinted
+    const asphaltMat = new THREE.MeshPhongMaterial({
+        color: 0xffffff,
         vertexColors: true,
         flatShading: true
     })
 
-    const dirtMat = new THREE.MeshPhongMaterial({
-        color: dirtColor, // 側面・底面: 土色
+    const concreteMat = new THREE.MeshPhongMaterial({
+        color: concreteSideColor,
         flatShading: true
     })
 
     const groundMaterials = [
-        dirtMat, // +X 側面
-        dirtMat, // -X 側面
-        grassMat, // +Y 上面（芝生！）
-        dirtMat, // -Y 底面
-        dirtMat, // +Z 側面
-        dirtMat  // -Z 側面
+        concreteMat, // +X
+        concreteMat, // -X
+        asphaltMat,  // +Y 上面
+        concreteMat, // -Y
+        concreteMat, // +Z
+        concreteMat  // -Z
     ]
 
-    // Subdivide the top face into a grid for terrain sculpting
-    const segments = 32;
-    const groundGeo = new THREE.BoxGeometry(groundSize, groundHeight, groundSize, segments, 1, segments);
+    const segments = 32
+    const groundGeo = new THREE.BoxGeometry(groundSize, groundHeight, groundSize, segments, 1, segments)
+    const nonIndexedGeo = groundGeo.toNonIndexed()
 
-    // Convert to non-indexed geometry so flatShading works perfectly with displaced vertices
-    const nonIndexedGeo = groundGeo.toNonIndexed();
+    // 上面の頂点カラーをダークアスファルトに
+    const posAttr = nonIndexedGeo.attributes.position
+    const colors = new Float32Array(posAttr.count * 3)
+    const cAsphalt = new THREE.Color(0x1a1a2e)
 
-    // Setup vertex colors
-    const posAttr = nonIndexedGeo.attributes.position;
-    const colors = new Float32Array(posAttr.count * 3);
-    const cGrass = new THREE.Color(0x5a9a3c);
-
-    // Default top-face to green, others no vertex color needed but we give them white so they don't block
     for (let i = 0; i < posAttr.count; i++) {
         if (posAttr.getY(i) > 0) {
-            colors[i * 3 + 0] = cGrass.r;
-            colors[i * 3 + 1] = cGrass.g;
-            colors[i * 3 + 2] = cGrass.b;
+            colors[i * 3 + 0] = cAsphalt.r
+            colors[i * 3 + 1] = cAsphalt.g
+            colors[i * 3 + 2] = cAsphalt.b
         } else {
-            colors[i * 3 + 0] = 1.0;
-            colors[i * 3 + 1] = 1.0;
-            colors[i * 3 + 2] = 1.0;
+            colors[i * 3 + 0] = 1.0
+            colors[i * 3 + 1] = 1.0
+            colors[i * 3 + 2] = 1.0
         }
     }
-    nonIndexedGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3));
+    nonIndexedGeo.setAttribute('color', new THREE.BufferAttribute(colors, 3))
 
     const ground = new THREE.Mesh(nonIndexedGeo, groundMaterials)
-    ground.position.y = -groundHeight / 2 // 上面がちょうど y=0 になるように
+    ground.position.y = -groundHeight / 2
     ground.receiveShadow = true
     ground.castShadow = false
     scene.add(ground)
-    return ground;
+
+    // ===== エッジグロー（台座の縁にオレンジの光帯） =====
+    const edgeGlowMat = new THREE.MeshPhongMaterial({
+        color: 0xff8844,
+        emissive: 0xff6622,
+        emissiveIntensity: 0.6,
+        flatShading: true,
+        transparent: true,
+        opacity: 0.8,
+    })
+
+    const edgeThickness = 0.08
+    const edgeHeight = 0.06
+    const halfSize = groundSize / 2
+
+    // 4辺のエッジグロー帯
+    const edges = [
+        { w: groundSize + edgeThickness * 2, d: edgeThickness, x: 0, z: halfSize },   // +Z
+        { w: groundSize + edgeThickness * 2, d: edgeThickness, x: 0, z: -halfSize },  // -Z
+        { w: edgeThickness, d: groundSize, x: halfSize, z: 0 },   // +X
+        { w: edgeThickness, d: groundSize, x: -halfSize, z: 0 },  // -X
+    ]
+
+    for (const e of edges) {
+        const edgeMesh = new THREE.Mesh(
+            new THREE.BoxGeometry(e.w, edgeHeight, e.d),
+            edgeGlowMat
+        )
+        edgeMesh.position.set(e.x, edgeHeight / 2 - 0.01, e.z)
+        scene.add(edgeMesh)
+    }
+
+    return ground
 }

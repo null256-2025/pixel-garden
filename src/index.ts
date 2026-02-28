@@ -2,85 +2,48 @@ import * as THREE from "three"
 
 import { PixelEngine } from "./PixelEngine"
 import { createGround } from "./objects/Ground"
-import { createClouds, updateClouds } from "./objects/Clouds"
-import { createTrees, createGroundGrass } from "./objects/Trees"
-import { createHouse } from "./objects/House"
-import { createFlowerbeds } from "./objects/Flowerbeds"
+import { makeTallTower } from "./objects/House"
 
-import { PathDrawer } from "./editor/PathDrawer"
-import { TerrainSculptor } from "./editor/TerrainSculptor"
-import { NaturePlacer } from "./editor/NaturePlacer"
-import { GrowthManager } from "./editor/GrowthManager"
-import { DrawPalette } from "./editor/DrawPalette"
-import { DestroyerTool } from "./editor/DestroyerTool"// =========================================
-//  Pixel Garden — メインエントリポイント
+// =========================================
+//  Neon City — メインエントリポイント
 // =========================================
 
 const engine = new PixelEngine({
-    pixelSize: 6,
-    backgroundColor: 0x87CEEB,
-    bloomStrength: 0.15,
-    bloomRadius: 0.1,
-    bloomThreshold: 0.9,
+    pixelSize: 3,
+    backgroundColor: 0x0d0d2b, // 深い紫〜紺の夜空
+    bloomStrength: 0.4,
+    bloomRadius: 0.2,
+    bloomThreshold: 0.5,
+    cameraScale: 5,
 })
 
 const { scene } = engine
 
 // --- シーンオブジェクトの配置 ---
-const ground = createGround(scene)
-createHouse(scene)
-const trees = createTrees(scene)
-const grassPatches = createGroundGrass(scene)
-const flowerbeds = createFlowerbeds(scene)
-const clouds = createClouds(scene)
+createGround(scene)
 
-// List of objects that should ride the terrain height
-const trackingObjects: THREE.Group[] = [...trees, ...grassPatches, ...flowerbeds]
+// --- プレビュー: TallTower（承認後に削除してエディタに統合） ---
+makeTallTower(scene, 0, 0)
 
-// --- 環境描画ツール ---
-const pathDrawer = new PathDrawer(engine.camera, scene, engine.renderer.domElement)
-pathDrawer.setGround(ground)
+// --- ライティング（夜景向け） ---
+// アンビエント：控えめに全体を照らす
+scene.add(new THREE.AmbientLight(0x222244, 0.4))
 
-const terrainSculptor = new TerrainSculptor(engine.camera, engine.renderer.domElement)
-terrainSculptor.setGround(ground)
-pathDrawer.setTerrainSculptor(terrainSculptor)
+// 月明かり（ディレクショナル）
+const moonLight = new THREE.DirectionalLight(0x5566aa, 0.4)
+moonLight.position.set(5, 15, 5)
+moonLight.castShadow = true
+moonLight.shadow.mapSize.set(2048, 2048)
+moonLight.shadow.camera.near = 0.1
+moonLight.shadow.camera.far = 50
+moonLight.shadow.camera.left = -15
+moonLight.shadow.camera.right = 15
+moonLight.shadow.camera.top = 15
+moonLight.shadow.camera.bottom = -15
+scene.add(moonLight)
 
-const growthManager = new GrowthManager(scene)
-
-const naturePlacer = new NaturePlacer(engine.camera, scene, engine.renderer.domElement, terrainSculptor, growthManager)
-naturePlacer.setGround(ground)
-naturePlacer.initTracking(trackingObjects)
-
-const destroyerTool = new DestroyerTool(engine.camera, scene, engine.renderer.domElement, engine.physics, trackingObjects)
-
-// Keep objects on top of the terrain when sculpted
-terrainSculptor.onTerrainUpdate((sculptor) => {
-    trackingObjects.forEach(obj => {
-        obj.position.y = sculptor.getGroundHeightAtXZ(obj.position.x, obj.position.z)
-    });
-});
-
-new DrawPalette(pathDrawer, terrainSculptor, naturePlacer, destroyerTool)
-
-// --- ライティング（昼間の太陽光） ---
-// 環境光: やや暖色の柔らかい光
-scene.add(new THREE.AmbientLight(0xfff5e6, 0.8))
-
-// 太陽光: 右上手前から照射、影あり
-const sunLight = new THREE.DirectionalLight(0xfffde0, 1.0)
-sunLight.position.set(5, 10, 5)
-sunLight.castShadow = true
-sunLight.shadow.mapSize.set(2048, 2048)
-sunLight.shadow.camera.near = 0.1
-sunLight.shadow.camera.far = 50
-sunLight.shadow.camera.left = -10
-sunLight.shadow.camera.right = 10
-sunLight.shadow.camera.top = 10
-sunLight.shadow.camera.bottom = -10
-scene.add(sunLight)
+// ヘミスフィアライト（空と地面の間の柔らかい光）
+scene.add(new THREE.HemisphereLight(0x222244, 0x110a22, 0.3))
 
 // --- アニメーション開始 ---
-engine.start(() => {
-    updateClouds(clouds)
-    growthManager.update(performance.now())
-})
+engine.start()

@@ -1,218 +1,298 @@
 import * as THREE from "three"
 
-/**
- * ハーフティンバー風の家を作成してシーンに追加する
- * 基礎・壁・屋根・木の梁・ドア・窓・ポーチ・煙突・小道を含む
- */
-export function createHouse(scene: THREE.Scene) {
+// =============================================
+//  ネオンシティ ビル生成モジュール
+//  参考画像テイスト: ダーク壁面 + 暖色窓 + 大型ネオンパネル
+// =============================================
 
-    const houseX = 0
-    const houseZ = -0.5
+// --- カラーパレット ---
+const WARM_WINDOW_COLORS = [
+    0xffcc33, // ウォームイエロー
+    0xffaa22, // オレンジイエロー
+    0xffe066, // ライトイエロー
+    0xff9933, // オレンジ
+]
 
-    const houseGroup = new THREE.Group()
+const NEON_ACCENT_COLORS = [
+    0x00ff88, // ネオングリーン
+    0xff00ff, // マゼンタ
+    0x00ffff, // シアン
+    0xff0066, // ネオンピンク
+    0x6600ff, // ネオンパープル
+    0xff8833, // ネオンオレンジ
+    0xffff00, // ネオンイエロー
+]
 
-    // --- マテリアル定義 ---
-    const wallMat = new THREE.MeshPhongMaterial({
-        color: 0xf0e0c8, flatShading: true // クリーム色の漆喰壁
+function pickWarmWindow(): number {
+    return WARM_WINDOW_COLORS[Math.floor(Math.random() * WARM_WINDOW_COLORS.length)]
+}
+
+function pickNeon(): number {
+    return NEON_ACCENT_COLORS[Math.floor(Math.random() * NEON_ACCENT_COLORS.length)]
+}
+
+// --- 壁面マテリアル生成 ---
+function makeWallMaterial(): THREE.MeshPhongMaterial {
+    const base = 0x2a2a3a
+    const variation = Math.floor(Math.random() * 0x101018)
+    return new THREE.MeshPhongMaterial({
+        color: base + variation,
+        flatShading: true,
     })
-    const woodMat = new THREE.MeshPhongMaterial({
-        color: 0x5c3a1e, flatShading: true // 濃茶: 木の梁・柱
-    })
-    const roofMat = new THREE.MeshPhongMaterial({
-        color: 0xb54a3a, flatShading: true // 赤茶色の屋根
-    })
-    const roofDarkMat = new THREE.MeshPhongMaterial({
-        color: 0x8c3528, flatShading: true // 屋根の暗い部分
-    })
-    const doorMat = new THREE.MeshPhongMaterial({
-        color: 0x7a4a2a, flatShading: true // ドア
-    })
-    const windowMat = new THREE.MeshPhongMaterial({
-        color: 0xaad4ee, emissive: 0x2a5a7a, emissiveIntensity: 0.15, flatShading: true
-    })
-    const stoneMat = new THREE.MeshPhongMaterial({
-        color: 0x9a9080, flatShading: true // 基礎の石色
-    })
-    const chimneyMat = new THREE.MeshPhongMaterial({
-        color: 0x7a6a5a, flatShading: true
-    })
+}
 
-    // ========== 寸法定義 ==========
-    const wallW = 1.8
-    const wallH = 0.9
-    const wallD = 1.3
-    const foundH = 0.12
-    const roofH = 0.8
-    const roofOverhang = 0.2
-    const bt = 0.06 // beam thickness
+// --- 窓を壁面に配置（参考画像風：大小さまざま、暖色メイン） ---
+function addWindows(
+    group: THREE.Group,
+    bw: number, bh: number, bd: number,
+    faceAxis: 'x' | 'z',
+    neonColor: number,
+) {
+    // 窓の縦列を作成（大小ランダム）
+    const faceSize = faceAxis === 'z' ? bw : bd
+    const numCols = Math.max(1, Math.floor(faceSize / 0.55))
+    const numRows = Math.max(1, Math.floor(bh / 0.6))
 
-    // ========== 基礎（石垣） ==========
-    const foundGeo = new THREE.BoxGeometry(wallW + 0.1, foundH, wallD + 0.1)
-    const foundation = new THREE.Mesh(foundGeo, stoneMat)
-    foundation.position.y = foundH / 2
-    foundation.castShadow = true
-    foundation.receiveShadow = true
-    houseGroup.add(foundation)
+    const colSpacing = faceSize / (numCols + 1)
+    const rowSpacing = bh / (numRows + 1.5)
 
-    // ========== 1階 壁 ==========
-    const wallGeo = new THREE.BoxGeometry(wallW, wallH, wallD)
-    const mainWall = new THREE.Mesh(wallGeo, wallMat)
-    mainWall.position.y = foundH + wallH / 2
-    mainWall.castShadow = true
-    mainWall.receiveShadow = true
-    houseGroup.add(mainWall)
+    for (let c = 0; c < numCols; c++) {
+        for (let r = 0; r < numRows; r++) {
+            // 窓のサイズ（大小ランダム）
+            const isLarge = Math.random() > 0.7
+            const winW = isLarge ? 0.3 + Math.random() * 0.15 : 0.15 + Math.random() * 0.1
+            const winH = isLarge ? 0.35 + Math.random() * 0.15 : 0.18 + Math.random() * 0.1
+            const depth = 0.03
 
-    // ========== 切妻屋根（ExtrudeGeometry） ==========
-    const roofShape = new THREE.Shape()
-    const halfW = wallW / 2 + roofOverhang
-    roofShape.moveTo(-halfW, 0)
-    roofShape.lineTo(0, roofH)
-    roofShape.lineTo(halfW, 0)
-    roofShape.lineTo(-halfW, 0)
+            // 点灯状態
+            const roll = Math.random()
+            let winColor: number
+            let emissiveColor: number
+            let intensity: number
 
-    const roofGeo = new THREE.ExtrudeGeometry(roofShape, {
-        depth: wallD + roofOverhang * 2,
-        bevelEnabled: false
-    })
-    const roof = new THREE.Mesh(roofGeo, roofMat)
-    roof.position.set(0, foundH + wallH, -wallD / 2 - roofOverhang)
-    roof.castShadow = true
-    roof.receiveShadow = true
-    houseGroup.add(roof)
+            if (roll < 0.45) {
+                // 暖色点灯（メイン）
+                winColor = pickWarmWindow()
+                emissiveColor = winColor
+                intensity = 0.3 + Math.random() * 0.3
+            } else if (roll < 0.6) {
+                // ネオン色の窓（少数）
+                winColor = neonColor
+                emissiveColor = neonColor
+                intensity = 0.2 + Math.random() * 0.2
+            } else {
+                // 消灯
+                winColor = 0x161622
+                emissiveColor = 0x000000
+                intensity = 0
+            }
 
-    // 棟木（てっぺんの横木）
-    const ridgeGeo = new THREE.BoxGeometry(bt * 1.5, bt, wallD + roofOverhang * 2 + 0.05)
-    const ridge = new THREE.Mesh(ridgeGeo, woodMat)
-    ridge.position.set(0, foundH + wallH + roofH, 0)
-    ridge.castShadow = true
-    houseGroup.add(ridge)
+            const winMat = new THREE.MeshPhongMaterial({
+                color: winColor,
+                emissive: emissiveColor,
+                emissiveIntensity: intensity,
+                flatShading: true,
+            })
 
-    // ========== ハーフティンバー（木の梁） ==========
-    function addBeam(w: number, h: number, d: number, x: number, y: number, z: number) {
-        const beam = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), woodMat)
-        beam.position.set(x, y, z)
-        beam.castShadow = true
-        houseGroup.add(beam)
-    }
+            const winGeo = new THREE.BoxGeometry(
+                faceAxis === 'z' ? winW : depth,
+                winH,
+                faceAxis === 'z' ? depth : winW
+            )
 
-    const bY = foundH
+            const halfFace = faceSize / 2
+            const posAlong = -halfFace + colSpacing * (c + 1)
+            const posY = 0.5 + r * rowSpacing
 
-    // 正面 (Z+)
-    const fZ = wallD / 2 + 0.03
-    addBeam(wallW + 0.04, bt, bt, 0, bY + bt / 2, fZ)                // 下横梁
-    addBeam(wallW + 0.04, bt, bt, 0, bY + wallH - bt / 2, fZ)        // 上横梁
-    addBeam(wallW + 0.04, bt, bt, 0, bY + wallH * 0.5, fZ)           // 中段横梁
-    addBeam(bt, wallH, bt, -wallW / 2, bY + wallH / 2, fZ)           // 左柱
-    addBeam(bt, wallH, bt, wallW / 2, bY + wallH / 2, fZ)            // 右柱
-    addBeam(bt, wallH * 0.5, bt, -0.22, bY + wallH * 0.25, fZ)       // ドア左柱
-    addBeam(bt, wallH * 0.5, bt, 0.22, bY + wallH * 0.25, fZ)        // ドア右柱
+            if (posY > bh - 0.2) continue
 
-    // 背面 (Z-)
-    const bZ = -wallD / 2 - 0.03
-    addBeam(wallW + 0.04, bt, bt, 0, bY + bt / 2, bZ)
-    addBeam(wallW + 0.04, bt, bt, 0, bY + wallH - bt / 2, bZ)
-    addBeam(bt, wallH, bt, -wallW / 2, bY + wallH / 2, bZ)
-    addBeam(bt, wallH, bt, wallW / 2, bY + wallH / 2, bZ)
-    addBeam(bt, wallH, bt, 0, bY + wallH / 2, bZ)                    // 中央柱
-
-    // 側面 (X+, X-)
-    for (const side of [-1, 1]) {
-        const sX = side * (wallW / 2 + 0.03)
-        addBeam(bt, wallH, bt, sX, bY + wallH / 2, -wallD / 4)
-        addBeam(bt, wallH, bt, sX, bY + wallH / 2, wallD / 4)
-        addBeam(bt, bt, wallD + 0.04, sX, bY + bt / 2, 0)
-        addBeam(bt, bt, wallD + 0.04, sX, bY + wallH - bt / 2, 0)
-        addBeam(bt, bt, wallD + 0.04, sX, bY + wallH * 0.5, 0)       // 中段横梁
-    }
-
-    // ========== ドア ==========
-    const doorW = 0.3
-    const doorH = 0.42
-    const door = new THREE.Mesh(new THREE.BoxGeometry(doorW, doorH, 0.06), doorMat)
-    door.position.set(0, foundH + doorH / 2, wallD / 2 + 0.04)
-    door.castShadow = true
-    houseGroup.add(door)
-
-    // ドアノブ
-    const knob = new THREE.Mesh(new THREE.SphereGeometry(0.02, 4, 4), stoneMat)
-    knob.position.set(0.08, foundH + doorH * 0.45, wallD / 2 + 0.08)
-    houseGroup.add(knob)
-
-    // ========== 窓 ==========
-    function addWindow(wx: number, wy: number, wz: number, faceAxis: 'z' | 'x') {
-        const wS = 0.2
-        const wD = 0.06
-        const ft = 0.025 // frame thickness
-
-        // ガラス
-        const glassGeo = faceAxis === 'z'
-            ? new THREE.BoxGeometry(wS, wS, wD)
-            : new THREE.BoxGeometry(wD, wS, wS)
-        const glass = new THREE.Mesh(glassGeo, windowMat)
-        glass.position.set(wx, wy, wz)
-        houseGroup.add(glass)
-
-        // 窓枠（十字に木を入れる）
-        const outward = faceAxis === 'z' ? (wz > 0 ? 0.015 : -0.015) : (wx > 0 ? 0.015 : -0.015)
-        if (faceAxis === 'z') {
-            addBeam(ft, wS + ft * 2, ft, wx, wy, wz + outward)       // 縦
-            addBeam(wS + ft * 2, ft, ft, wx, wy, wz + outward)       // 横
-        } else {
-            addBeam(ft, wS + ft * 2, ft, wx + outward, wy, wz)
-            addBeam(ft, ft, wS + ft * 2, wx + outward, wy, wz)
+            for (const sign of [1, -1]) {
+                const win = new THREE.Mesh(winGeo, winMat)
+                if (faceAxis === 'z') {
+                    win.position.set(posAlong, posY, sign * (bd / 2 + depth / 2))
+                } else {
+                    win.position.set(sign * (bw / 2 + depth / 2), posY, posAlong)
+                }
+                group.add(win)
+            }
         }
     }
+}
 
-    const winY = foundH + wallH * 0.6
-    // 正面（ドアの左右）
-    addWindow(-0.55, winY, wallD / 2 + 0.04, 'z')
-    addWindow(0.55, winY, wallD / 2 + 0.04, 'z')
-    // 側面
-    addWindow(-wallW / 2 - 0.04, winY, 0, 'x')
-    addWindow(wallW / 2 + 0.04, winY, 0, 'x')
-    // 背面
-    addWindow(-0.35, winY, -wallD / 2 - 0.04, 'z')
-    addWindow(0.35, winY, -wallD / 2 - 0.04, 'z')
+// --- ネオンパネル（壁面に大きな光の帯） ---
+function addNeonPanel(
+    group: THREE.Group,
+    bw: number, bh: number, bd: number,
+    neonColor: number,
+    faceAxis: 'x' | 'z',
+    vertical: boolean = true
+) {
+    const mat = new THREE.MeshPhongMaterial({
+        color: neonColor,
+        emissive: neonColor,
+        emissiveIntensity: 0.5,
+        flatShading: true,
+        transparent: true,
+        opacity: 0.9,
+    })
 
-    // ========== ポーチ（玄関の庇） ==========
-    const porchW = 0.7
-    const porchD = 0.35
+    if (vertical) {
+        // 縦ストライプ（壁面の高さの60〜80%）
+        const stripeH = bh * (0.6 + Math.random() * 0.2)
+        const stripeW = 0.12 + Math.random() * 0.08
+        const offsetX = (Math.random() - 0.5) * (faceAxis === 'z' ? bw * 0.4 : 0)
+        const offsetZ = (Math.random() - 0.5) * (faceAxis === 'x' ? bd * 0.4 : 0)
 
-    // 庇の屋根
-    const porchRoof = new THREE.Mesh(new THREE.BoxGeometry(porchW, 0.04, porchD), roofDarkMat)
-    porchRoof.position.set(0, foundH + doorH + 0.08, wallD / 2 + porchD / 2)
-    porchRoof.castShadow = true
-    houseGroup.add(porchRoof)
+        for (const sign of [1, -1]) {
+            const stripe = new THREE.Mesh(
+                new THREE.BoxGeometry(
+                    faceAxis === 'z' ? stripeW : 0.03,
+                    stripeH,
+                    faceAxis === 'z' ? 0.03 : stripeW
+                ),
+                mat
+            )
+            if (faceAxis === 'z') {
+                stripe.position.set(offsetX, bh * 0.5, sign * (bd / 2 + 0.02))
+            } else {
+                stripe.position.set(sign * (bw / 2 + 0.02), bh * 0.5, offsetZ)
+            }
+            group.add(stripe)
+        }
+    } else {
+        // 水平アクセントライン
+        const lineW = faceAxis === 'z' ? bw * 0.8 : 0.03
+        const lineD = faceAxis === 'z' ? 0.03 : bd * 0.8
+        const posY = bh * (0.7 + Math.random() * 0.2)
 
-    // 庇を支える柱
-    const pillarGeo = new THREE.BoxGeometry(0.05, doorH + 0.08, 0.05)
-    for (const px of [-porchW / 2 + 0.03, porchW / 2 - 0.03]) {
-        const pillar = new THREE.Mesh(pillarGeo, woodMat)
-        pillar.position.set(px, foundH + (doorH + 0.08) / 2, wallD / 2 + porchD - 0.03)
-        pillar.castShadow = true
-        houseGroup.add(pillar)
+        for (const sign of [1, -1]) {
+            const line = new THREE.Mesh(
+                new THREE.BoxGeometry(lineW, 0.05, lineD),
+                mat
+            )
+            if (faceAxis === 'z') {
+                line.position.set(0, posY, sign * (bd / 2 + 0.02))
+            } else {
+                line.position.set(sign * (bw / 2 + 0.02), posY, 0)
+            }
+            group.add(line)
+        }
+    }
+}
+
+// --- 屋上ディテール ---
+function addRooftop(group: THREE.Group, w: number, d: number, h: number) {
+    const detailMat = new THREE.MeshPhongMaterial({
+        color: 0x333344,
+        flatShading: true,
+    })
+
+    // アンテナ（赤ライト付き）
+    if (Math.random() > 0.3) {
+        const antennaH = 0.4 + Math.random() * 0.5
+        const antenna = new THREE.Mesh(
+            new THREE.CylinderGeometry(0.02, 0.02, antennaH, 4),
+            detailMat
+        )
+        const ax = (Math.random() - 0.5) * w * 0.5
+        const az = (Math.random() - 0.5) * d * 0.5
+        antenna.position.set(ax, h + antennaH / 2, az)
+        group.add(antenna)
+
+        // 先端の赤/ピンクライト
+        const tipColor = Math.random() > 0.5 ? 0xff3333 : 0xff66aa
+        const tipMat = new THREE.MeshPhongMaterial({
+            color: tipColor,
+            emissive: tipColor,
+            emissiveIntensity: 0.6,
+            flatShading: true,
+        })
+        const tip = new THREE.Mesh(
+            new THREE.SphereGeometry(0.05, 4, 4),
+            tipMat
+        )
+        tip.position.set(ax, h + antennaH, az)
+        group.add(tip)
     }
 
-    // ポーチの床
-    const porchFloor = new THREE.Mesh(new THREE.BoxGeometry(porchW, 0.04, porchD), stoneMat)
-    porchFloor.position.set(0, foundH / 2, wallD / 2 + porchD / 2)
-    porchFloor.receiveShadow = true
-    houseGroup.add(porchFloor)
+    // 室外機ボックス
+    if (Math.random() > 0.4) {
+        const acBox = new THREE.Mesh(
+            new THREE.BoxGeometry(0.35, 0.2, 0.3),
+            detailMat
+        )
+        acBox.position.set(
+            (Math.random() - 0.5) * w * 0.5,
+            h + 0.1,
+            (Math.random() - 0.5) * d * 0.5
+        )
+        group.add(acBox)
+    }
 
-    // ========== 煙突 ==========
-    const chW = 0.18
-    const chH = 0.55
-    const chimney = new THREE.Mesh(new THREE.BoxGeometry(chW, chH, chW), chimneyMat)
-    chimney.position.set(wallW * 0.28, foundH + wallH + roofH * 0.55, -wallD * 0.2)
-    chimney.castShadow = true
-    houseGroup.add(chimney)
-
-    // 煙突キャップ
-    const chimneyTop = new THREE.Mesh(new THREE.BoxGeometry(chW + 0.06, 0.04, chW + 0.06), chimneyMat)
-    chimneyTop.position.set(wallW * 0.28, foundH + wallH + roofH * 0.55 + chH / 2 + 0.02, -wallD * 0.2)
-    houseGroup.add(chimneyTop)
-
-    // ========== 家全体を配置 ==========
-    houseGroup.position.set(houseX, 0, houseZ)
-    scene.add(houseGroup)
+    // 屋上のフチ（パラペット）
+    const parapetMat = new THREE.MeshPhongMaterial({
+        color: 0x2e2e40,
+        flatShading: true,
+    })
+    const parapetH = 0.06
+    const parapetT = 0.06
+    // 4辺
+    const parapets = [
+        { pw: w + parapetT, pd: parapetT, px: 0, pz: d / 2 },
+        { pw: w + parapetT, pd: parapetT, px: 0, pz: -d / 2 },
+        { pw: parapetT, pd: d, px: w / 2, pz: 0 },
+        { pw: parapetT, pd: d, px: -w / 2, pz: 0 },
+    ]
+    for (const p of parapets) {
+        const par = new THREE.Mesh(
+            new THREE.BoxGeometry(p.pw, parapetH, p.pd),
+            parapetMat
+        )
+        par.position.set(p.px, h + parapetH / 2, p.pz)
+        group.add(par)
+    }
 }
+
+// =============================================
+//  ビルタイプ 1: TallTower（大型高層タワー）
+//  W×D: 3×3, H: 7.0, ネオン: グリーン
+// =============================================
+export function makeTallTower(
+    scene: THREE.Scene,
+    x: number, z: number
+): THREE.Group {
+    const group = new THREE.Group()
+
+    const w = 3, d = 3, h = 7
+
+    // ビル本体
+    const wallMat = makeWallMaterial()
+    const body = new THREE.Mesh(
+        new THREE.BoxGeometry(w, h, d),
+        wallMat
+    )
+    body.position.y = h / 2
+    body.castShadow = true
+    body.receiveShadow = true
+    group.add(body)
+
+    // 窓（4面）
+    const neonColor = 0x00ff88 // グリーン
+    addWindows(group, w, h, d, 'z', neonColor)
+    addWindows(group, w, h, d, 'x', neonColor)
+
+    // ネオンパネル — 前後面に大きな縦ストライプ
+    addNeonPanel(group, w, h, d, neonColor, 'z', true)
+    // 側面に水平アクセント
+    addNeonPanel(group, w, h, d, neonColor, 'x', false)
+
+    // 屋上
+    addRooftop(group, w, d, h)
+
+    group.position.set(x, 0, z)
+    scene.add(group)
+    return group
+}
+
+// === 他のビルタイプは今後追加 ===
+// makeTallTower のみ先行実装

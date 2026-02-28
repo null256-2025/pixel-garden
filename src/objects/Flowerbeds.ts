@@ -1,145 +1,152 @@
 import * as THREE from "three"
 
-// --- マテリアルを共有化 ---
-const soilMat = new THREE.MeshPhongMaterial({
-    color: 0x6b4423, flatShading: true // 茶色の土
-})
-const soilEdgeMat = new THREE.MeshPhongMaterial({
-    color: 0x8B6914, flatShading: true // 花壇の縁（木色）
-})
-
-const flowerColors = [
-    0xff6b8a, // ピンク
-    0xffd93d, // 黄色
-    0xff8c42, // オレンジ
-    0xc084fc, // 紫
-    0xf87171, // 赤
-    0xffffff, // 白
+// --- ネオンカラーパレット ---
+const NEON_COLORS = [
+    0xff00ff, // マゼンタ
+    0x00ffff, // シアン
+    0x00ff88, // ネオングリーン
+    0xff6600, // ネオンオレンジ
+    0xffff00, // ネオンイエロー
+    0xff0066, // ネオンピンク
+    0x6600ff, // ネオンパープル
 ]
-const flowerMats = flowerColors.map(c =>
-    new THREE.MeshPhongMaterial({ color: c, flatShading: true })
-)
-const stemMat = new THREE.MeshPhongMaterial({
-    color: 0x3d7a28, flatShading: true // 茎の緑
-})
-const leafMat = new THREE.MeshPhongMaterial({
-    color: 0x4a9030, flatShading: true // 葉っぱの緑
-})
 
-// --- 花壇を1つ作る関数 ---
-export function makeFlowerbed(
+function pickNeon(): number {
+    return NEON_COLORS[Math.floor(Math.random() * NEON_COLORS.length)]
+}
+
+// --- ネオン看板を1つ作る関数 ---
+export function makeNeonSign(
     scene: THREE.Scene,
     x: number, z: number,
-    bedW: number, bedD: number,
-    flowerCount: number,
+    signW: number, signH: number,
     rotY: number = 0
 ) {
-    const bedGroup = new THREE.Group()
+    const signGroup = new THREE.Group()
 
-    // 土のベッド
-    const bedH = 0.06
-    const bed = new THREE.Mesh(
-        new THREE.BoxGeometry(bedW, bedH, bedD),
-        soilMat
+    // 看板の支柱（金属ポール）
+    const poleMat = new THREE.MeshPhongMaterial({
+        color: 0x444455,
+        flatShading: true,
+    })
+
+    const poleH = signH + 0.3
+    const pole = new THREE.Mesh(
+        new THREE.CylinderGeometry(0.03, 0.04, poleH, 5),
+        poleMat
     )
-    bed.position.y = bedH / 2
-    bed.receiveShadow = true
-    bedGroup.add(bed)
+    pole.position.y = poleH / 2
+    pole.castShadow = true
+    signGroup.add(pole)
 
-    // 花壇の縁（木枠）
-    const edgeT = 0.04
-    const edgeH = bedH + 0.02
-    // 前後
-    for (const dz of [-bedD / 2, bedD / 2]) {
-        const edge = new THREE.Mesh(
-            new THREE.BoxGeometry(bedW + edgeT * 2, edgeH, edgeT),
-            soilEdgeMat
+    // 看板の板面（暗い背景）
+    const boardMat = new THREE.MeshPhongMaterial({
+        color: 0x111118,
+        flatShading: true,
+    })
+    const boardDepth = 0.04
+    const board = new THREE.Mesh(
+        new THREE.BoxGeometry(signW, signH, boardDepth),
+        boardMat
+    )
+    board.position.set(0, poleH - signH / 2 - 0.05, 0)
+    signGroup.add(board)
+
+    // ネオンテキスト風の光るバー（看板面にネオンチューブを配置）
+    const neonColor = pickNeon()
+    const neonMat = new THREE.MeshPhongMaterial({
+        color: neonColor,
+        emissive: neonColor,
+        emissiveIntensity: 1.0,
+        flatShading: true,
+    })
+
+    // 横線（ネオンチューブ）を複数配置
+    const tubeCount = 1 + Math.floor(Math.random() * 3)
+    for (let i = 0; i < tubeCount; i++) {
+        const tubeW = signW * (0.4 + Math.random() * 0.4)
+        const tubeH = 0.03 + Math.random() * 0.02
+        const tube = new THREE.Mesh(
+            new THREE.BoxGeometry(tubeW, tubeH, boardDepth + 0.01),
+            neonMat
         )
-        edge.position.set(0, edgeH / 2, dz)
-        edge.castShadow = true
-        bedGroup.add(edge)
-    }
-    // 左右
-    for (const dx of [-bedW / 2, bedW / 2]) {
-        const edge = new THREE.Mesh(
-            new THREE.BoxGeometry(edgeT, edgeH, bedD),
-            soilEdgeMat
+        const yPos = board.position.y - signH / 2 + signH * (i + 1) / (tubeCount + 1)
+        tube.position.set(
+            (Math.random() - 0.5) * (signW - tubeW) * 0.5,
+            yPos,
+            boardDepth / 2 + 0.005
         )
-        edge.position.set(dx, edgeH / 2, 0)
-        edge.castShadow = true
-        bedGroup.add(edge)
-    }
-
-    // 花を植える
-    for (let i = 0; i < flowerCount; i++) {
-        const fx = (Math.random() - 0.5) * (bedW - 0.1)
-        const fz = (Math.random() - 0.5) * (bedD - 0.1)
-
-        // 茎
-        const stemH = 0.08 + Math.random() * 0.1
-        const stem = new THREE.Mesh(
-            new THREE.BoxGeometry(0.02, stemH, 0.02),
-            stemMat
-        )
-        stem.position.set(fx, bedH + stemH / 2, fz)
-        stem.castShadow = true
-        bedGroup.add(stem)
-
-        // 花（球or多面体）
-        const mat = flowerMats[Math.floor(Math.random() * flowerMats.length)]
-        const flowerSize = 0.04 + Math.random() * 0.03
-        const flowerGeo = Math.random() > 0.5
-            ? new THREE.SphereGeometry(flowerSize, 5, 4)
-            : new THREE.IcosahedronGeometry(flowerSize, 0)
-        const flower = new THREE.Mesh(flowerGeo, mat)
-        flower.position.set(fx, bedH + stemH + flowerSize * 0.5, fz)
-        flower.rotation.set(
-            Math.random() * 0.3,
-            Math.random() * Math.PI,
-            Math.random() * 0.3
-        )
-        flower.castShadow = true
-        bedGroup.add(flower)
-
-        // 葉っぱ（たまに追加）
-        if (Math.random() > 0.4) {
-            const leafGeo = new THREE.BoxGeometry(0.06, 0.015, 0.025)
-            const leaf = new THREE.Mesh(leafGeo, leafMat)
-            leaf.position.set(fx + 0.03, bedH + stemH * 0.4, fz)
-            leaf.rotation.z = -0.4
-            bedGroup.add(leaf)
-        }
+        signGroup.add(tube)
     }
 
-    bedGroup.userData.type = 'flowerbed'
-    bedGroup.position.set(x, 0, z)
-    bedGroup.rotation.y = rotY
-    scene.add(bedGroup)
-    return bedGroup
+    // 縦線もたまに追加
+    if (Math.random() > 0.5) {
+        const vTubeH = signH * (0.3 + Math.random() * 0.4)
+        const vTube = new THREE.Mesh(
+            new THREE.BoxGeometry(0.03, vTubeH, boardDepth + 0.01),
+            neonMat
+        )
+        vTube.position.set(
+            (Math.random() - 0.5) * signW * 0.6,
+            board.position.y,
+            boardDepth / 2 + 0.005
+        )
+        signGroup.add(vTube)
+    }
+
+    // 看板のフレーム（縁取り）
+    const frameMat = new THREE.MeshPhongMaterial({
+        color: neonColor,
+        emissive: neonColor,
+        emissiveIntensity: 0.5,
+        flatShading: true,
+    })
+    const frameT = 0.02
+    // 上辺
+    signGroup.add(makeFrameBar(signW + frameT * 2, frameT, boardDepth + 0.01,
+        0, board.position.y + signH / 2, 0, frameMat))
+    // 下辺
+    signGroup.add(makeFrameBar(signW + frameT * 2, frameT, boardDepth + 0.01,
+        0, board.position.y - signH / 2, 0, frameMat))
+    // 左辺
+    signGroup.add(makeFrameBar(frameT, signH, boardDepth + 0.01,
+        -signW / 2, board.position.y, 0, frameMat))
+    // 右辺
+    signGroup.add(makeFrameBar(frameT, signH, boardDepth + 0.01,
+        signW / 2, board.position.y, 0, frameMat))
+
+    // PointLight for glow effect
+    const signLight = new THREE.PointLight(neonColor, 0.8, 2.5)
+    signLight.position.set(0, board.position.y, boardDepth + 0.3)
+    signGroup.add(signLight)
+
+    signGroup.userData.type = 'neonsign'
+    signGroup.position.set(x, 0, z)
+    signGroup.rotation.y = rotY
+    scene.add(signGroup)
+    return signGroup
+}
+
+function makeFrameBar(w: number, h: number, d: number, x: number, y: number, z: number, mat: THREE.Material): THREE.Mesh {
+    const bar = new THREE.Mesh(new THREE.BoxGeometry(w, h, d), mat)
+    bar.position.set(x, y, z)
+    return bar
 }
 
 /**
- * 花壇を複数作成してシーンに追加する
- * 土のベッド・木枠の縁・花（茎+花+葉）で構成
+ * ネオン看板を複数作成してシーンに追加する
  */
-export function createFlowerbeds(scene: THREE.Scene): THREE.Group[] {
-    // --- 花壇の配置 ---
-    const beds: THREE.Group[] = []
+export function createNeonSigns(scene: THREE.Scene): THREE.Group[] {
+    const signs: THREE.Group[] = []
 
-    // 家の左側（長い花壇）
-    beds.push(makeFlowerbed(scene, -1.4, -0.5, 0.5, 1.2, 8))
+    // ビルの周辺に看板を配置
+    signs.push(makeNeonSign(scene, -2.0, 1.5, 0.8, 0.5, 0.3))
+    signs.push(makeNeonSign(scene, 2.0, 1.5, 0.6, 0.7, -0.2))
+    signs.push(makeNeonSign(scene, -1.0, -3.5, 0.7, 0.4, 0.5))
+    signs.push(makeNeonSign(scene, 4.0, -0.5, 0.9, 0.6, -0.4))
+    signs.push(makeNeonSign(scene, -4.0, 3.5, 0.5, 0.5, 0.1))
+    signs.push(makeNeonSign(scene, 1.5, 5.5, 0.8, 0.4, 0.6))
+    signs.push(makeNeonSign(scene, -5.5, -1.5, 0.6, 0.6, -0.3))
 
-    // 家の右側（長い花壇）
-    beds.push(makeFlowerbed(scene, 1.4, -0.5, 0.5, 1.2, 8))
-
-    // 小道の左側（小さな花壇）
-    beds.push(makeFlowerbed(scene, -0.8, 1.2, 0.6, 0.5, 5))
-
-    // 小道の右側（小さな花壇）
-    beds.push(makeFlowerbed(scene, 0.8, 1.2, 0.6, 0.5, 5))
-
-    // 家の裏（奥側）
-    beds.push(makeFlowerbed(scene, 0, -1.8, 1.4, 0.4, 10))
-
-    return beds
+    return signs
 }

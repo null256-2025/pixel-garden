@@ -1,5 +1,5 @@
 import * as THREE from 'three';
-import { makeFlowerbed } from '../objects/Flowerbeds';
+import { makeNeonSign } from '../objects/Flowerbeds';
 
 interface SeedData {
     mesh: THREE.Object3D;
@@ -60,37 +60,36 @@ export class GrowthManager {
             seed.mesh.scale.set(pulse, pulse, pulse);
 
             if (elapsedSec >= seed.growTimeSeconds) {
-                // Time to grow! Replace seed with flowerbed
-                this.growToFlowerbed(seed, i);
+                // Time to grow! Replace seed with neon sign
+                this.growToNeonSign(seed, i);
             }
         }
     }
 
-    private growToFlowerbed(seed: SeedData, index: number) {
+    private growToNeonSign(seed: SeedData, index: number) {
         // Remove seed
         this.scene.remove(seed.mesh);
         this.seeds.splice(index, 1);
 
-        // Remove from tracking array so it doesn't leak memory or ghost positions
+        // Remove from tracking array
         const trackingIndex = this.trackingObjects.indexOf(seed.mesh);
         if (trackingIndex !== -1) {
             this.trackingObjects.splice(trackingIndex, 1);
         }
         const originalMesh = seed.mesh;
 
-        // Spawn a small simple flowerbed
+        // Spawn a small neon sign
         const pos = seed.mesh.position;
-        // makeFlowerbed uses (scene, x, z, bedW, bedD, flowerCount, rotY)
         const rotY = Math.random() * Math.PI;
-        const newBed = makeFlowerbed(this.scene, pos.x, pos.z, 0.5, 0.5, 3, rotY);
-        newBed.position.y = pos.y - 0.02; // Account for the seed offset we had
+        const newSign = makeNeonSign(this.scene, pos.x, pos.z, 0.5, 0.3, rotY);
+        newSign.position.y = pos.y - 0.02;
 
-        // Add the new bed to tracking
-        this.trackingObjects.push(newBed);
+        // Add the new sign to tracking
+        this.trackingObjects.push(newSign);
 
         // Update seed record so Undo can find the evolved mesh
-        this.evolvedSeeds.set(originalMesh, newBed);
-        seed.mesh = newBed;
+        this.evolvedSeeds.set(originalMesh, newSign);
+        seed.mesh = newSign;
         seed.isGrown = true;
     }
 }

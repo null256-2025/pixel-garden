@@ -1,20 +1,18 @@
 import * as THREE from 'three';
-import { RockGenerator } from './generators/RockGenerator';
 import { TerrainSculptor } from './TerrainSculptor';
-import { makeTree, makeGrassPatch } from '../objects/Trees';
-import { makeSeed } from '../objects/Seed';
+import { makeStreetLight, makeGroundDetail } from '../objects/Trees';
+import { makeNeonSign } from '../objects/Flowerbeds';
 import { GrowthManager } from './GrowthManager';
 import { CommandHistory } from './CommandHistory';
 
-export type NatureToolType = 'Tree' | 'Seed' | 'Grass' | 'Rock';
+export type CityToolType = 'StreetLight' | 'NeonSign';
 
 export class NaturePlacer {
     private raycaster = new THREE.Raycaster();
     private mouse = new THREE.Vector2();
-    private currentTool: NatureToolType | null = null;
+    private currentTool: CityToolType | null = null;
 
     private groundMesh: THREE.Object3D | null = null;
-    private rockGenerator: RockGenerator;
 
     // Track placed objects so they can ride the terrain
     private trackingObjects: THREE.Object3D[] = [];
@@ -29,11 +27,9 @@ export class NaturePlacer {
         private terrainSculptor: TerrainSculptor,
         private growthManager: GrowthManager
     ) {
-        this.rockGenerator = new RockGenerator(scene);
-
         // Setup placement cursor
         const cursorGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 12);
-        const cursorMat = new THREE.MeshBasicMaterial({ color: 0xffff00, transparent: true, opacity: 0.5, depthTest: false });
+        const cursorMat = new THREE.MeshBasicMaterial({ color: 0x6644ff, transparent: true, opacity: 0.5, depthTest: false });
         this.cursorMesh = new THREE.Mesh(cursorGeo, cursorMat);
         this.cursorMesh.visible = false;
         this.cursorMesh.renderOrder = 999;
@@ -50,7 +46,7 @@ export class NaturePlacer {
 
     public initTracking(trackingArray: THREE.Object3D[]) {
         this.trackingObjects = trackingArray;
-        // Pass connection up to growth manager so spawning flowerbeds binds them
+        // Pass connection up to growth manager so spawning binds them
         this.growthManager.registerTrackingArray(this.trackingObjects);
     }
 
@@ -58,7 +54,7 @@ export class NaturePlacer {
         this.groundMesh = ground;
     }
 
-    public setTool(tool: NatureToolType | null) {
+    public setTool(tool: CityToolType | null) {
         this.currentTool = tool;
         if (!tool) {
             this.cursorMesh.visible = false;
@@ -117,52 +113,35 @@ export class NaturePlacer {
     private placeObject(pos: THREE.Vector3) {
         let obj: THREE.Object3D | null = null;
 
-        if (this.currentTool === 'Rock') {
-            obj = this.rockGenerator.generate(pos);
-        } else if (this.currentTool === 'Tree') {
-            // Randomly choose small or medium size for placed trees
+        if (this.currentTool === 'StreetLight') {
+            // ランダムに small or medium の街路灯を配置
             const size = Math.random() > 0.5 ? 'small' : 'medium';
-            obj = makeTree(this.scene, pos.x, pos.z, size);
-            obj.position.copy(pos); // Ensure Y is set too
-        } else if (this.currentTool === 'Grass') {
-            obj = makeGrassPatch(this.scene, pos.x, pos.z);
-            obj.position.copy(pos); // Ensure Y is set too
-        } else if (this.currentTool === 'Seed') {
-            obj = makeSeed(this.scene, pos.x, pos.z);
+            obj = makeStreetLight(this.scene, pos.x, pos.z, size);
             obj.position.copy(pos);
-            this.growthManager.addSeed(obj as THREE.Mesh);
+        } else if (this.currentTool === 'NeonSign') {
+            const signW = 0.5 + Math.random() * 0.4;
+            const signH = 0.3 + Math.random() * 0.4;
+            obj = makeNeonSign(this.scene, pos.x, pos.z, signW, signH, Math.random() * Math.PI * 2);
+            obj.position.copy(pos);
         }
 
         if (obj) {
             this.trackingObjects.push(obj);
 
             const placedObj = obj;
-            const isSeed = this.currentTool === 'Seed';
 
             CommandHistory.push(() => {
-                if (isSeed) {
-                    this.growthManager.removeSeed(placedObj);
-                } else {
-                    this.scene.remove(placedObj);
-                    const idx = this.trackingObjects.indexOf(placedObj);
-                    if (idx !== -1) this.trackingObjects.splice(idx, 1);
-                }
+                this.scene.remove(placedObj);
+                const idx = this.trackingObjects.indexOf(placedObj);
+                if (idx !== -1) this.trackingObjects.splice(idx, 1);
             });
         }
     }
 
     private updateObjectHeights(sculptor: TerrainSculptor) {
         this.trackingObjects.forEach(obj => {
-            // Only update height, assume X and Z are locked
             const newY = sculptor.getGroundHeightAtXZ(obj.position.x, obj.position.z);
-
-            // For rocks, keep them slightly buried based on their creation logic offset, 
-            // but for now simple Y overwrite works for bounding boxes.
-            if ('geometry' in obj && (obj as THREE.Mesh).geometry instanceof THREE.IcosahedronGeometry) {
-                obj.position.y = newY + 0.06; // Approximate rock embed
-            } else {
-                obj.position.y = newY;
-            }
+            obj.position.y = newY;
         });
     }
 

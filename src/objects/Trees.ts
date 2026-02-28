@@ -1,157 +1,160 @@
 import * as THREE from "three"
 
-// --- 木を1本作る関数 ---
-export function makeTree(scene: THREE.Scene, x: number, z: number, size: 'small' | 'medium' | 'large') {
-    const treeGroup = new THREE.Group()
+// --- 街路灯を1本作る関数 ---
+export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 'small' | 'medium' | 'large') {
+    const lightGroup = new THREE.Group()
 
-    // 幹のマテリアル
-    const trunkMat = new THREE.MeshPhongMaterial({
-        color: 0x6b4226, // 木の幹の茶色
+    // ポールのマテリアル
+    const poleMat = new THREE.MeshPhongMaterial({
+        color: 0x444455,
         flatShading: true
     })
-
-    // 葉のマテリアル（複数色でバリエーション）
-    const leafColors = [0x3d8c2f, 0x4a9e38, 0x2d7a22, 0x52a840]
-    const leafMats = leafColors.map(c =>
-        new THREE.MeshPhongMaterial({ color: c, flatShading: true })
-    )
 
     // サイズ別パラメータ
     const params = {
-        small: { trunkH: 0.3, trunkR: 0.04, leafR: 0.2, leafY: 0.4 },
-        medium: { trunkH: 0.5, trunkR: 0.06, leafR: 0.35, leafY: 0.6 },
-        large: { trunkH: 0.7, trunkR: 0.08, leafR: 0.45, leafY: 0.85 }
+        small: { poleH: 0.8, poleR: 0.03, headR: 0.08, lightY: 0.85, lightIntensity: 1.5, lightDist: 3.0 },
+        medium: { poleH: 1.2, poleR: 0.04, headR: 0.10, lightY: 1.25, lightIntensity: 2.0, lightDist: 4.0 },
+        large: { poleH: 1.6, poleR: 0.05, headR: 0.12, lightY: 1.65, lightIntensity: 2.5, lightDist: 5.0 },
     }
     const p = params[size]
 
-    // 幹（円柱）
-    const trunkGeo = new THREE.CylinderGeometry(p.trunkR, p.trunkR * 1.3, p.trunkH, 6)
-    const trunk = new THREE.Mesh(trunkGeo, trunkMat)
-    trunk.position.y = p.trunkH / 2
-    trunk.castShadow = true
-    trunk.receiveShadow = true
-    treeGroup.add(trunk)
+    // ポール（円柱）
+    const poleGeo = new THREE.CylinderGeometry(p.poleR, p.poleR * 1.5, p.poleH, 6)
+    const pole = new THREE.Mesh(poleGeo, poleMat)
+    pole.position.y = p.poleH / 2
+    pole.castShadow = true
+    pole.receiveShadow = true
+    lightGroup.add(pole)
 
-    // 葉（丸い塊）- メインの葉
-    const leafMat = leafMats[Math.floor(Math.random() * leafMats.length)]
-    const leafGeo = new THREE.IcosahedronGeometry(p.leafR, 0)
-    const leaf = new THREE.Mesh(leafGeo, leafMat)
-    leaf.position.y = p.leafY
-    leaf.rotation.y = Math.random() * Math.PI
-    leaf.castShadow = true
-    leaf.receiveShadow = true
-    treeGroup.add(leaf)
+    // ランプのアーム（横に伸びるバー）
+    const armLength = 0.2
+    const armGeo = new THREE.BoxGeometry(armLength, 0.03, 0.03)
+    const arm = new THREE.Mesh(armGeo, poleMat)
+    arm.position.set(armLength / 2, p.poleH - 0.02, 0)
+    lightGroup.add(arm)
 
-    // 葉のサブパーツ（少し小さい球をずらして追加、もこもこ感）
-    if (size !== 'small') {
-        const subLeafCount = size === 'large' ? 3 : 2
-        for (let i = 0; i < subLeafCount; i++) {
-            const subR = p.leafR * (0.5 + Math.random() * 0.3)
-            const subGeo = new THREE.IcosahedronGeometry(subR, 0)
-            const subLeafMat = leafMats[Math.floor(Math.random() * leafMats.length)]
-            const subLeaf = new THREE.Mesh(subGeo, subLeafMat)
-            const angle = (i / subLeafCount) * Math.PI * 2 + Math.random() * 0.5
-            subLeaf.position.set(
-                Math.cos(angle) * p.leafR * 0.5,
-                p.leafY - 0.05 + Math.random() * 0.1,
-                Math.sin(angle) * p.leafR * 0.5
-            )
-            subLeaf.castShadow = true
-            treeGroup.add(subLeaf)
-        }
-    }
+    // ランプヘッド（光る部分）
+    const lampColor = 0xffeedd // 暖かい白色光
+    const lampMat = new THREE.MeshPhongMaterial({
+        color: lampColor,
+        emissive: lampColor,
+        emissiveIntensity: 1.0,
+        flatShading: true,
+        transparent: true,
+        opacity: 0.9,
+    })
 
-    treeGroup.userData.type = 'tree'
-    treeGroup.position.set(x, 0, z)
-    treeGroup.rotation.y = Math.random() * Math.PI * 2
-    const scale = 0.8 + Math.random() * 0.4
-    treeGroup.scale.setScalar(scale)
+    const lampGeo = new THREE.SphereGeometry(p.headR, 6, 4)
+    const lamp = new THREE.Mesh(lampGeo, lampMat)
+    lamp.position.set(armLength, p.lightY, 0)
+    lightGroup.add(lamp)
 
-    scene.add(treeGroup)
-    return treeGroup
+    // ランプの下にカバー
+    const coverGeo = new THREE.ConeGeometry(p.headR * 1.5, 0.06, 6)
+    const coverMat = new THREE.MeshPhongMaterial({
+        color: 0x333340,
+        flatShading: true,
+    })
+    const cover = new THREE.Mesh(coverGeo, coverMat)
+    cover.position.set(armLength, p.lightY + p.headR + 0.02, 0)
+    cover.rotation.x = Math.PI // 逆さま
+    lightGroup.add(cover)
+
+    // PointLight で地面を照らす
+    const pointLight = new THREE.PointLight(lampColor, p.lightIntensity, p.lightDist)
+    pointLight.position.set(armLength, p.lightY - 0.05, 0)
+    pointLight.castShadow = false // パフォーマンスのため
+    lightGroup.add(pointLight)
+
+    // ポールの根元のディテール（ベースプレート）
+    const basePlate = new THREE.Mesh(
+        new THREE.CylinderGeometry(p.poleR * 2.5, p.poleR * 3, 0.04, 6),
+        poleMat
+    )
+    basePlate.position.y = 0.02
+    lightGroup.add(basePlate)
+
+    lightGroup.userData.type = 'streetlight'
+    lightGroup.position.set(x, 0, z)
+    lightGroup.rotation.y = Math.random() * Math.PI * 2
+
+    scene.add(lightGroup)
+    return lightGroup
 }
 
 /**
- * 初期シーン用に木を複数本作成してシーンに追加する
+ * 初期シーン用に街路灯を複数配置してシーンに追加する
  */
-export function createTrees(scene: THREE.Scene): THREE.Group[] {
-    const trees: THREE.Group[] = []
+export function createStreetLights(scene: THREE.Scene): THREE.Group[] {
+    const lights: THREE.Group[] = []
 
-    // 大きな木（奥の方に数本）
-    trees.push(makeTree(scene, -2.5, -2.5, 'large'))
-    trees.push(makeTree(scene, 2.8, -2.0, 'large'))
-    trees.push(makeTree(scene, -1.5, -3.0, 'large'))
+    // 大きな街路灯（主要通り沿い）
+    lights.push(makeStreetLight(scene, -3.5, 2.0, 'large'))
+    lights.push(makeStreetLight(scene, 3.5, 2.0, 'large'))
+    lights.push(makeStreetLight(scene, -3.5, -3.0, 'large'))
+    lights.push(makeStreetLight(scene, 3.5, -3.0, 'large'))
 
-    // 中くらいの木
-    trees.push(makeTree(scene, 2.0, 2.0, 'medium'))
-    trees.push(makeTree(scene, -2.8, 1.5, 'medium'))
-    trees.push(makeTree(scene, 1.5, -3.2, 'medium'))
-    trees.push(makeTree(scene, -3.0, -0.5, 'medium'))
+    // 中くらいの街路灯
+    lights.push(makeStreetLight(scene, 0, 5.0, 'medium'))
+    lights.push(makeStreetLight(scene, -6.0, 0, 'medium'))
+    lights.push(makeStreetLight(scene, 6.0, 0, 'medium'))
+    lights.push(makeStreetLight(scene, 0, -6.0, 'medium'))
 
-    // 小さな木（手前やアクセント）
-    trees.push(makeTree(scene, 3.2, -0.5, 'small'))
-    trees.push(makeTree(scene, -1.8, 2.5, 'small'))
-    trees.push(makeTree(scene, 0.8, -2.8, 'small'))
-    trees.push(makeTree(scene, 3.0, 2.8, 'small'))
+    // 小さな街路灯（路地裏）
+    lights.push(makeStreetLight(scene, -1.5, 6.0, 'small'))
+    lights.push(makeStreetLight(scene, 5.0, 5.0, 'small'))
+    lights.push(makeStreetLight(scene, -5.0, -5.0, 'small'))
 
-    return trees
+    return lights
 }
 
 
+// 地面のディテール（マンホール/排水溝風）
+export function makeGroundDetail(scene: THREE.Scene, x: number, z: number) {
+    const detailGroup = new THREE.Group()
 
-export function makeGrassPatch(scene: THREE.Scene, x: number, z: number) {
-    // 低い草のマテリアル
-    const grassDark = new THREE.MeshPhongMaterial({
-        color: 0x4a8c30,
-        flatShading: true
-    })
-    const grassLight = new THREE.MeshPhongMaterial({
-        color: 0x6db84a,
-        flatShading: true
+    const metalMat = new THREE.MeshPhongMaterial({
+        color: 0x333344,
+        flatShading: true,
     })
 
-    const grassGroup = new THREE.Group()
-    const bladeCount = 2 + Math.floor(Math.random() * 3)
+    // マンホール風の丸い蓋
+    const coverGeo = new THREE.CylinderGeometry(0.08, 0.08, 0.01, 8)
+    const cover = new THREE.Mesh(coverGeo, metalMat)
+    cover.position.y = 0.005
+    cover.receiveShadow = true
+    detailGroup.add(cover)
 
-    for (let j = 0; j < bladeCount; j++) {
-        const bladeH = 0.06 + Math.random() * 0.08
-        const bladeW = 0.03
-        const bladeGeo = new THREE.BoxGeometry(bladeW, bladeH, bladeW)
-        const blade = new THREE.Mesh(
-            bladeGeo,
-            Math.random() > 0.5 ? grassDark : grassLight
-        )
-        blade.position.set(
-            (Math.random() - 0.5) * 0.08,
-            bladeH / 2,
-            (Math.random() - 0.5) * 0.08
-        )
-        blade.castShadow = true
-        grassGroup.add(blade)
-    }
+    // 格子模様（十字線）
+    const lineGeo = new THREE.BoxGeometry(0.14, 0.012, 0.015)
+    const line1 = new THREE.Mesh(lineGeo, metalMat)
+    line1.position.y = 0.01
+    detailGroup.add(line1)
+    const line2 = new THREE.Mesh(lineGeo, metalMat)
+    line2.position.y = 0.01
+    line2.rotation.y = Math.PI / 2
+    detailGroup.add(line2)
 
-    grassGroup.position.set(x, 0, z)
-    scene.add(grassGroup)
-    return grassGroup
+    detailGroup.position.set(x, 0, z)
+    scene.add(detailGroup)
+    return detailGroup
 }
 
 /**
- * 初期シーン用に地面の低い草を散布してシーンに追加する
+ * 地面のディテールを散布
  */
-export function createGroundGrass(scene: THREE.Scene): THREE.Group[] {
-    const grassPatches: THREE.Group[] = []
+export function createGroundDetails(scene: THREE.Scene): THREE.Group[] {
+    const details: THREE.Group[] = []
 
-    // 小さな草の束を散らばせる
-    for (let i = 0; i < 35; i++) {
-        // 小道と木の位置を避けてランダム配置
+    for (let i = 0; i < 15; i++) {
         let gx, gz
         do {
-            gx = (Math.random() - 0.5) * 7
-            gz = (Math.random() - 0.5) * 7
-        } while (Math.abs(gx) < 0.9 && gz > -1.0 && gz < 3.0)
+            gx = (Math.random() - 0.5) * 16
+            gz = (Math.random() - 0.5) * 16
+        } while (Math.abs(gx) < 2.5 && Math.abs(gz) < 2.5) // ビル群の中心を避ける
 
-        grassPatches.push(makeGrassPatch(scene, gx, gz))
+        details.push(makeGroundDetail(scene, gx, gz))
     }
 
-    return grassPatches
+    return details
 }
