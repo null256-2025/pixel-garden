@@ -23,7 +23,9 @@ export class DrawPalette {
             { type: 'Lower', label: '🕳️ 削る' }
         ],
         Decoration: [
-            { type: 'Path', label: '🛤️ 道' }
+            { type: 'Road', label: '🛣️ 道路' },
+            { type: 'Sidewalk', label: '🚶 歩道付道路' },
+            { type: 'Crosswalk', label: '🦓 横断歩道' }
         ],
         // City: [
         //     { type: 'StreetLight', label: '🏮 街灯' },
@@ -106,7 +108,7 @@ export class DrawPalette {
 
         // Select the default category and tool
         this.selectCategory('Decoration');
-        this.selectTool('Path');
+        this.selectTool('Road');
     }
 
     private addCategoryButton(category: Category, label: string) {
@@ -185,7 +187,7 @@ export class DrawPalette {
             this.pathDrawer.setTool(null);
             this.naturePlacer.setTool(null);
             this.destroyerTool.detachEvents();
-        } else if (selectedTool === 'Path') {
+        } else if (selectedTool === 'Path' || selectedTool === 'Road' || selectedTool === 'Sidewalk' || selectedTool === 'Crosswalk') {
             this.pathDrawer.setTool(selectedTool);
             this.terrainSculptor.setTool(null);
             this.naturePlacer.setTool(null);

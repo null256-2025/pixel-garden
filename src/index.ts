@@ -2,7 +2,13 @@ import * as THREE from "three"
 
 import { PixelEngine } from "./PixelEngine"
 import { createGround } from "./objects/Ground"
-import { makeTallTower } from "./objects/House"
+import { PathDrawer } from "./editor/PathDrawer"
+import { TerrainSculptor } from "./editor/TerrainSculptor"
+import { NaturePlacer } from "./editor/NaturePlacer"
+import { DestroyerTool } from "./editor/DestroyerTool"
+import { DrawPalette } from "./editor/DrawPalette"
+
+import { GrowthManager } from "./editor/GrowthManager"
 
 // =========================================
 //  Neon City — メインエントリポイント
@@ -17,20 +23,58 @@ const engine = new PixelEngine({
     cameraScale: 5,
 })
 
-const { scene } = engine
+const { scene, camera, renderer } = engine
+const domElement = renderer.domElement
 
 // --- シーンオブジェクトの配置 ---
-createGround(scene)
+const ground = createGround(scene)
 
-// --- プレビュー: TallTower（承認後に削除してエディタに統合） ---
-makeTallTower(scene, 0, 0)
+// --- エディタツールの初期化 ---
+const terrainSculptor = new TerrainSculptor(camera, domElement)
+terrainSculptor.setGround(ground)
+
+const pathDrawer = new PathDrawer(camera, scene, domElement)
+pathDrawer.setGround(ground)
+pathDrawer.setTerrainSculptor(terrainSculptor)
+
+// GrowthManager は、将来的に光る木（Neon Tree）などを育てるために使うかも
+const growthManager = new GrowthManager(scene)
+const naturePlacer = new NaturePlacer(camera, scene, domElement, terrainSculptor, growthManager)
+naturePlacer.setGround(ground)
+
+// DestroyerTool には暫定の physics (null) を渡す（本来は PhysicsWorld だが、今回は物理エンジン統合前なのでスタブ化するか後回し。ビル破壊用に後で修正する）
+// ひとまず null as any で渡し、trackingObjects を空配列で渡しておく
+const destroyerTool = new DestroyerTool(camera, scene, domElement, null as any, [])
+
+// パレットUIの生成
+new DrawPalette(pathDrawer, terrainSculptor, naturePlacer, destroyerTool)
 
 // --- ライティング（夜景向け） ---
-// アンビエント：控えめに全体を照らす
-scene.add(new THREE.AmbientLight(0x222244, 0.4))
+// アンビエント：少し明るめにしてテスト時の視認性を確保
+const ambientLight = new THREE.AmbientLight(0x2a2a44, 0.7)
+scene.add(ambientLight)
+
+// --- 明るさ調整スライダー（UI） ---
+const sliderContainer = document.createElement('div')
+sliderContainer.style.position = 'absolute'
+sliderContainer.style.top = '20px'
+sliderContainer.style.right = '20px'
+sliderContainer.style.color = '#fff'
+sliderContainer.style.fontFamily = 'sans-serif'
+sliderContainer.style.background = 'rgba(0,0,0,0.5)'
+sliderContainer.style.padding = '10px'
+sliderContainer.style.borderRadius = '8px'
+sliderContainer.style.zIndex = '1000'
+sliderContainer.innerHTML = '<label>明るさ <input type="range" id="brightnessSlider" min="0" max="2" step="0.1" value="0.7" style="vertical-align: middle;"></label>'
+document.body.appendChild(sliderContainer)
+
+document.getElementById('brightnessSlider')?.addEventListener('input', (e) => {
+    const val = parseFloat((e.target as HTMLInputElement).value)
+    ambientLight.intensity = val
+})
 
 // 月明かり（ディレクショナル）
-const moonLight = new THREE.DirectionalLight(0x5566aa, 0.4)
+const moonLight = new THREE.DirectionalLight(0x5566aa, 0.5)
 moonLight.position.set(5, 15, 5)
 moonLight.castShadow = true
 moonLight.shadow.mapSize.set(2048, 2048)
@@ -43,7 +87,7 @@ moonLight.shadow.camera.bottom = -15
 scene.add(moonLight)
 
 // ヘミスフィアライト（空と地面の間の柔らかい光）
-scene.add(new THREE.HemisphereLight(0x222244, 0x110a22, 0.3))
+scene.add(new THREE.HemisphereLight(0x333355, 0x1a1a33, 0.5))
 
 // --- アニメーション開始 ---
 engine.start()

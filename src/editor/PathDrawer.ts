@@ -4,7 +4,7 @@ import { PathGenerator } from './generators/PathGenerator';
 import { CommandHistory } from './CommandHistory';
 import { TerrainSculptor } from './TerrainSculptor';
 
-export type ToolType = 'River' | 'Path' | 'Raise' | 'Lower';
+export type ToolType = 'River' | 'Path' | 'Road' | 'Sidewalk' | 'Crosswalk' | 'Raise' | 'Lower';
 
 export class PathDrawer {
     private raycaster = new THREE.Raycaster();
@@ -68,6 +68,15 @@ export class PathDrawer {
             this.lineMat.color.setHex(0x60a5fa); // Blue preview
         } else if (tool === 'Path') {
             this.lineMat.color.setHex(0xc4b28f); // Path preview
+        } else if (tool === 'Road') {
+            this.lineMat.color.setHex(0xffff44); // Road preview (yellow)
+            this.lineMat.linewidth = 5;
+        } else if (tool === 'Sidewalk') {
+            this.lineMat.color.setHex(0xaaaaaa); // Sidewalk preview (gray)
+            this.lineMat.linewidth = 8;
+        } else if (tool === 'Crosswalk') {
+            this.lineMat.color.setHex(0xffffff); // Crosswalk preview (white)
+            this.lineMat.linewidth = 5;
         }
     }
 
@@ -94,7 +103,7 @@ export class PathDrawer {
     }
 
     private onPointerDown(event: PointerEvent) {
-        if (event.button !== 0 || this.currentTool !== 'River' && this.currentTool !== 'Path') return; // Only draw on left click with valid tool
+        if (event.button !== 0 || !['River', 'Path', 'Road', 'Sidewalk', 'Crosswalk'].includes(this.currentTool!)) return; // Only draw on left click with valid tool
         this.updateMouse(event);
         const hitPoint = this.getIntersection();
 
@@ -112,11 +121,21 @@ export class PathDrawer {
         const hitPoint = this.getIntersection();
 
         if (hitPoint) {
-            // Only add point if it's far enough from the last point to avoid dense overlapping points
-            const lastPoint = this.currentPath[this.currentPath.length - 1];
-            if (lastPoint.distanceTo(hitPoint) > 0.3) {
-                this.currentPath.push(hitPoint.clone());
+            if (this.currentTool === 'Road' || this.currentTool === 'Sidewalk' || this.currentTool === 'Crosswalk') {
+                // For Road/Sidewalk/Crosswalk, we only care about start and end points for a straight line
+                if (this.currentPath.length === 1) {
+                    this.currentPath.push(hitPoint.clone());
+                } else {
+                    this.currentPath[1] = hitPoint.clone();
+                }
                 this.updatePreviewLine();
+            } else {
+                // Only add point if it's far enough from the last point to avoid dense overlapping points
+                const lastPoint = this.currentPath[this.currentPath.length - 1];
+                if (lastPoint.distanceTo(hitPoint) > 0.3) {
+                    this.currentPath.push(hitPoint.clone());
+                    this.updatePreviewLine();
+                }
             }
         }
     }
@@ -125,8 +144,9 @@ export class PathDrawer {
         if (!this.isDrawing) return;
         this.isDrawing = false;
 
-        // Ensure we have enough points to build a curve
-        if (this.currentPath.length > 2) {
+        // Ensure we have enough points (2 for straight road, 3+ for curve)
+        const minPoints = (this.currentTool === 'Road' || this.currentTool === 'Sidewalk' || this.currentTool === 'Crosswalk') ? 2 : 3;
+        if (this.currentPath.length >= minPoints) {
             this.generatePathMesh();
         }
 
@@ -169,8 +189,9 @@ export class PathDrawer {
             };
 
             generatedMesh = this.riverGenerator.generate(this.currentPath, getHeight);
-        } else if (this.currentTool === 'Path') {
-            generatedMesh = this.pathGenerator.generate(this.currentPath);
+        } else if (this.currentTool === 'Path' || this.currentTool === 'Road' || this.currentTool === 'Sidewalk' || this.currentTool === 'Crosswalk') {
+            const toolType = (this.currentTool === 'Path') ? 'Road' : this.currentTool; // Default to road if path
+            generatedMesh = this.pathGenerator.generate(this.currentPath, toolType);
         }
 
         if (generatedMesh) {
@@ -183,7 +204,7 @@ export class PathDrawer {
                     if (this.terrainSculptor && savedSnapshot) {
                         this.terrainSculptor.restoreSnapshot(savedSnapshot);
                     }
-                } else if (tool === 'Path') {
+                } else if (tool === 'Path' || tool === 'Road' || tool === 'Sidewalk' || tool === 'Crosswalk') {
                     this.pathGenerator.remove(mesh);
                 }
             });
