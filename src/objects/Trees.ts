@@ -34,11 +34,11 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
     lightGroup.add(lampBase)
 
     // ランプヘッド（光る白い部分、すり鉢状）
-    const lampColor = 0xffffff // クリアな白色光
+    const lampColor = 0xffaa00 // 温かみのある暖色系の光（オレンジ/黄）
     const lampMat = new THREE.MeshPhongMaterial({
         color: lampColor,
         emissive: lampColor,
-        emissiveIntensity: 1.0,
+        emissiveIntensity: 0.8, // 発光を少し抑えめに
         flatShading: true,
         transparent: true,
         opacity: 0.9,
@@ -60,8 +60,9 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
     lightGroup.add(cover)
 
     // PointLight で周囲を照らす (位置はランプの中心)
-    const pointLight = new THREE.PointLight(Math.random() > 0.5 ? 0xffeedd : 0xffffff, p.lightIntensity, p.lightDist)
-    pointLight.position.y = p.poleH + 0.25
+    // 画像のように真下がうっすら光るように距離と強さを調整
+    const pointLight = new THREE.PointLight(lampColor, p.lightIntensity * 0.5, p.lightDist * 0.7)
+    pointLight.position.y = p.poleH + 0.1
     pointLight.castShadow = false // パフォーマンスのため
     lightGroup.add(pointLight)
 

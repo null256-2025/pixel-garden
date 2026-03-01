@@ -17,31 +17,35 @@ export class DrawPalette {
 
     private currentCategory: Category = 'Decoration';
 
-    private toolsByCategory: Record<Category, { type: ExtendedToolType, label: string }[]> = {
+    // Updated labels to be just emojis, and added 'title' for tooltips
+    private toolsByCategory: Record<Category, { type: ExtendedToolType, label: string, title: string }[]> = {
         Terrain: [
-            { type: 'Raise', label: '⛰️ 盛る' },
-            { type: 'Lower', label: '🕳️ 削る' }
+            { type: 'Raise', label: '⛰️', title: '盛る' },
+            { type: 'Lower', label: '🕳️', title: '削る' }
         ],
         Decoration: [
-            { type: 'Road', label: '🛣️ 道路' },
-            { type: 'Crosswalk', label: '🦓 横断歩道' }
+            { type: 'Road', label: '🛣️', title: '道路' },
+            { type: 'Crosswalk', label: '🦓', title: '横断歩道' }
         ],
         City: [
-            { type: 'StreetLight', label: '🏮 街灯' },
-            { type: 'NeonSign', label: '💡 ネオン表示' },
-            { type: 'TallTower', label: '🏢 大型タワー' },
-            { type: 'SlimTower', label: '🗼 スリムタワー' },
-            { type: 'WideLow', label: '🏭 低層ワイド' },
-            { type: 'MediumA', label: '🏬 中層ビルA' },
-            { type: 'MediumB', label: '🏨 中層ビルB' },
-            { type: 'ShopFront', label: '🏪 店舗入口' },
-            { type: 'OfficeBlock', label: '🏦 オフィス' },
-            { type: 'Apartment', label: '🏢 アパート' },
-            { type: 'MiniBox', label: '📦 ミニ店舗' },
-            { type: 'CornerBldg', label: '📐 角地ビル' },
-            { type: 'Demolish', label: '🔨 破壊' }
+            { type: 'StreetLight', label: '🏮', title: '街灯' },
+            { type: 'NeonSign', label: '💡', title: 'ネオン表示' },
+            { type: 'TallTower', label: '🏢', title: '大型タワー' },
+            { type: 'SlimTower', label: '🗼', title: 'スリムタワー' },
+            { type: 'WideLow', label: '🏭', title: '低層ワイド' },
+            { type: 'MediumA', label: '🏬', title: '中層ビルA' },
+            { type: 'MediumB', label: '🏨', title: '中層ビルB' },
+            { type: 'ShopFront', label: '🏪', title: '店舗入口' },
+            { type: 'OfficeBlock', label: '🏦', title: 'オフィス' },
+            { type: 'Apartment', label: '🏘️', title: 'アパート' },  // changed from 🏢 to avoid duplicate with TallTower
+            { type: 'MiniBox', label: '📦', title: 'ミニ店舗' },
+            { type: 'CornerBldg', label: '📐', title: '角地ビル' },
+            { type: 'Demolish', label: '🔨', title: '破壊' }
         ]
     };
+
+    private isCollapsed = false;
+    private toggleBtn: HTMLButtonElement;
 
     constructor(
         private pathDrawer: PathDrawer,
@@ -62,8 +66,25 @@ export class DrawPalette {
         this.container.style.borderRadius = '12px';
         this.container.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5), 0 0 20px rgba(100, 0, 255, 0.15)';
         this.container.style.fontFamily = 'sans-serif';
+        this.container.style.transition = 'bottom 0.3s ease';
         this.container.style.zIndex = '1000';
         this.container.style.border = '1px solid rgba(100, 100, 200, 0.2)';
+
+        // Toggle Button at the top right of the palette
+        this.toggleBtn = document.createElement('button');
+        this.toggleBtn.innerText = '▼';
+        this.toggleBtn.style.position = 'absolute';
+        this.toggleBtn.style.top = '-20px';
+        this.toggleBtn.style.right = '10px';
+        this.toggleBtn.style.padding = '2px 10px';
+        this.toggleBtn.style.backgroundColor = 'rgba(15, 15, 30, 0.92)';
+        this.toggleBtn.style.border = '1px solid rgba(100, 100, 200, 0.2)';
+        this.toggleBtn.style.borderBottom = 'none';
+        this.toggleBtn.style.borderRadius = '6px 6px 0 0';
+        this.toggleBtn.style.color = '#aab';
+        this.toggleBtn.style.cursor = 'pointer';
+        this.toggleBtn.onclick = () => this.toggleCollapse();
+        this.container.appendChild(this.toggleBtn);
 
         // Prevent pointer events from falling through to the canvas
         this.container.addEventListener('pointerdown', e => e.stopPropagation());
@@ -120,6 +141,29 @@ export class DrawPalette {
         this.selectTool('TallTower');
     }
 
+    private toggleCollapse() {
+        this.isCollapsed = !this.isCollapsed;
+        if (this.isCollapsed) {
+            // Hide rows and button says ▲
+            this.categoryRow.style.display = 'none';
+            this.toolsRow.style.display = 'none';
+            this.toggleBtn.innerText = '▲';
+            this.container.style.padding = '0';
+            this.container.style.border = 'none';
+            this.container.style.boxShadow = 'none';
+            this.container.style.backgroundColor = 'transparent';
+        } else {
+            // Show rows and button says ▼
+            this.categoryRow.style.display = 'flex';
+            this.toolsRow.style.display = 'flex';
+            this.toggleBtn.innerText = '▼';
+            this.container.style.padding = '12px';
+            this.container.style.border = '1px solid rgba(100, 100, 200, 0.2)';
+            this.container.style.boxShadow = '0 8px 24px rgba(0,0,0,0.5), 0 0 20px rgba(100, 0, 255, 0.15)';
+            this.container.style.backgroundColor = 'rgba(15, 15, 30, 0.92)';
+        }
+    }
+
     private addCategoryButton(category: Category, label: string) {
         const btn = document.createElement('button');
         btn.innerHTML = label;
@@ -165,15 +209,17 @@ export class DrawPalette {
         tools.forEach(t => {
             const btn = document.createElement('button');
             btn.innerHTML = t.label;
-            btn.style.padding = '8px 16px';
+            btn.title = t.title; // Add tooltip on hover
+            btn.style.width = '40px';
+            btn.style.height = '40px';
             btn.style.border = '2px solid transparent';
             btn.style.borderRadius = '6px';
             btn.style.cursor = 'pointer';
             btn.style.backgroundColor = 'rgba(25, 25, 45, 0.8)';
             btn.style.display = 'flex';
             btn.style.alignItems = 'center';
-            btn.style.gap = '6px';
-            btn.style.fontSize = '14px';
+            btn.style.justifyContent = 'center';
+            btn.style.fontSize = '20px'; // Increase emoji size
             btn.style.color = '#aab';
             btn.style.boxShadow = '0 1px 3px rgba(0,0,0,0.3)';
 
