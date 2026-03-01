@@ -12,7 +12,7 @@ export class PathGenerator {
         });
     }
 
-    public generate(points: THREE.Vector3[], type: 'Road' | 'Sidewalk' | 'Crosswalk' = 'Road'): THREE.Mesh | null {
+    public generate(points: THREE.Vector3[], type: 'Road' | 'Crosswalk' = 'Road'): THREE.Mesh | null {
         if (points.length < 2) return null;
 
         // Start and end points only (straight line)
@@ -38,28 +38,15 @@ export class PathGenerator {
 
         // 全体のグループ（親になるMesh）
         const geometry = new THREE.BoxGeometry(width, depth, distance)
-        const mesh = new THREE.Mesh(geometry, this.material)
+        const mesh = new THREE.Mesh() // 空のメッシュを親にする
 
-        if (type === 'Sidewalk') {
-            // 歩道部分（両サイドに一段高いコンクリート）
-            const swWidth = 0.3
-            const swDepth = 0.08
-            const swMat = new THREE.MeshPhongMaterial({
-                color: 0x555566,
-                flatShading: true,
-            })
-            const swGeo = new THREE.BoxGeometry(swWidth, swDepth, distance)
+        if (type === 'Road') {
+            const baseMesh = new THREE.Mesh(geometry, this.material)
+            baseMesh.receiveShadow = true
+            mesh.add(baseMesh)
+        }
 
-            const leftSW = new THREE.Mesh(swGeo, swMat)
-            leftSW.position.set(-width / 2 - swWidth / 2, 0.02, 0)
-            leftSW.receiveShadow = true
-            mesh.add(leftSW)
-
-            const rightSW = new THREE.Mesh(swGeo, swMat)
-            rightSW.position.set(width / 2 + swWidth / 2, 0.02, 0)
-            rightSW.receiveShadow = true
-            mesh.add(rightSW)
-        } else if (type === 'Crosswalk') {
+        if (type === 'Crosswalk') {
             // 横断歩道の白線パターン
             const stripeDepth = 0.05
             const stripeWidth = 0.8 // 道路幅より少し短い
@@ -70,8 +57,8 @@ export class PathGenerator {
                 color: 0xdddddd,
                 flatShading: true,
                 polygonOffset: true,
-                polygonOffsetFactor: -2, // アスファルトより上に描画
-                polygonOffsetUnits: -2
+                polygonOffsetFactor: -10, // 確実にアスファルトより上に描画
+                polygonOffsetUnits: -10
             })
             const stripeGeo = new THREE.BoxGeometry(stripeWidth, stripeDepth, stripeLength)
 
@@ -82,8 +69,9 @@ export class PathGenerator {
             for (let i = 0; i < totalStripes; i++) {
                 const stripe = new THREE.Mesh(stripeGeo, stripeMat)
                 const zPos = startZ + i * (stripeLength + stripeGap)
-                // ローカル座標で配置
-                stripe.position.set(0, 0.02, zPos)
+                // ローカル座標で配置。Roadのベースメッシュに乗るように少し浮かす。
+                // 重なった道路より確実に上に行くように大きめに浮かせる
+                stripe.position.set(0, 0.04, zPos)
                 stripe.receiveShadow = true
                 mesh.add(stripe)
             }

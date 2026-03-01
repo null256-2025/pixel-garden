@@ -24,7 +24,6 @@ export class DrawPalette {
         ],
         Decoration: [
             { type: 'Road', label: '🛣️ 道路' },
-            { type: 'Sidewalk', label: '🚶 歩道付道路' },
             { type: 'Crosswalk', label: '🦓 横断歩道' }
         ],
         // City: [
@@ -187,7 +186,7 @@ export class DrawPalette {
             this.pathDrawer.setTool(null);
             this.naturePlacer.setTool(null);
             this.destroyerTool.detachEvents();
-        } else if (selectedTool === 'Path' || selectedTool === 'Road' || selectedTool === 'Sidewalk' || selectedTool === 'Crosswalk') {
+        } else if (selectedTool === 'Path' || selectedTool === 'Road' || selectedTool === 'Crosswalk') {
             this.pathDrawer.setTool(selectedTool);
             this.terrainSculptor.setTool(null);
             this.naturePlacer.setTool(null);
