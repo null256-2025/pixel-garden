@@ -4,8 +4,8 @@ import { NaturePlacer, CityToolType } from './NaturePlacer';
 import { DestroyerTool } from './DestroyerTool';
 import { CommandHistory } from './CommandHistory';
 
-type Category = 'Terrain' | 'Decoration'; // | 'City';
-export type ExtendedToolType = ToolType | 'StreetLight' | 'NeonSign' | 'Demolish';
+type Category = 'Terrain' | 'Decoration' | 'City';
+export type ExtendedToolType = ToolType | CityToolType | 'Demolish';
 
 export class DrawPalette {
     private container: HTMLDivElement;
@@ -26,11 +26,21 @@ export class DrawPalette {
             { type: 'Road', label: '🛣️ 道路' },
             { type: 'Crosswalk', label: '🦓 横断歩道' }
         ],
-        // City: [
-        //     { type: 'StreetLight', label: '🏮 街灯' },
-        //     { type: 'NeonSign', label: '💡 ネオン看板' },
-        //     { type: 'Demolish', label: '🔨 破壊' }
-        // ]
+        City: [
+            { type: 'StreetLight', label: '🏮 街灯' },
+            { type: 'NeonSign', label: '💡 ネオン表示' },
+            { type: 'TallTower', label: '🏢 大型タワー' },
+            { type: 'SlimTower', label: '🗼 スリムタワー' },
+            { type: 'WideLow', label: '🏭 低層ワイド' },
+            { type: 'MediumA', label: '🏬 中層ビルA' },
+            { type: 'MediumB', label: '🏨 中層ビルB' },
+            { type: 'ShopFront', label: '🏪 店舗入口' },
+            { type: 'OfficeBlock', label: '🏦 オフィス' },
+            { type: 'Apartment', label: '🏢 アパート' },
+            { type: 'MiniBox', label: '📦 ミニ店舗' },
+            { type: 'CornerBldg', label: '📐 角地ビル' },
+            { type: 'Demolish', label: '🔨 破壊' }
+        ]
     };
 
     constructor(
@@ -79,7 +89,7 @@ export class DrawPalette {
 
         this.addCategoryButton('Terrain', '🌍 地形');
         this.addCategoryButton('Decoration', '🛤️ デコ');
-        // this.addCategoryButton('City', '🏙️ 都市');
+        this.addCategoryButton('City', '🏙️ 都市');
 
         const undoBtn = document.createElement('button');
         undoBtn.innerText = '↩️ 一つ戻す (Undo)';
@@ -106,8 +116,8 @@ export class DrawPalette {
         });
 
         // Select the default category and tool
-        this.selectCategory('Decoration');
-        this.selectTool('Road');
+        this.selectCategory('City');
+        this.selectTool('TallTower');
     }
 
     private addCategoryButton(category: Category, label: string) {

@@ -1,7 +1,7 @@
 import * as THREE from "three"
 
 // --- 街路灯を1本作る関数 ---
-export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 'small' | 'medium' | 'large') {
+export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 'small' | 'medium' | 'large', rotY: number = 0) {
     const lightGroup = new THREE.Group()
 
     // ポールのマテリアル
@@ -26,15 +26,15 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
     pole.receiveShadow = true
     lightGroup.add(pole)
 
-    // ランプのアーム（横に伸びるバー）
-    const armLength = 0.2
-    const armGeo = new THREE.BoxGeometry(armLength, 0.03, 0.03)
-    const arm = new THREE.Mesh(armGeo, poleMat)
-    arm.position.set(armLength / 2, p.poleH - 0.02, 0)
-    lightGroup.add(arm)
+    // ランプのアームは無し（真っ直ぐ上に付くタイプ）
+    // ランプヘッドの下部（ポールから広がる黒い部分）
+    const lampBaseGeo = new THREE.CylinderGeometry(p.headR, p.poleR, 0.15, 12)
+    const lampBase = new THREE.Mesh(lampBaseGeo, poleMat)
+    lampBase.position.y = p.poleH + 0.075
+    lightGroup.add(lampBase)
 
-    // ランプヘッド（光る部分）
-    const lampColor = 0xffeedd // 暖かい白色光
+    // ランプヘッド（光る白い部分、すり鉢状）
+    const lampColor = 0xffffff // クリアな白色光
     const lampMat = new THREE.MeshPhongMaterial({
         color: lampColor,
         emissive: lampColor,
@@ -44,25 +44,24 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
         opacity: 0.9,
     })
 
-    const lampGeo = new THREE.SphereGeometry(p.headR, 6, 4)
+    const lampGeo = new THREE.CylinderGeometry(p.headR * 1.5, p.headR, 0.2, 12)
     const lamp = new THREE.Mesh(lampGeo, lampMat)
-    lamp.position.set(armLength, p.lightY, 0)
+    lamp.position.y = p.poleH + 0.15 + 0.1
     lightGroup.add(lamp)
 
-    // ランプの下にカバー
-    const coverGeo = new THREE.ConeGeometry(p.headR * 1.5, 0.06, 6)
+    // ランプ上のカバー（平らな暗い蓋）
+    const coverGeo = new THREE.CylinderGeometry(p.headR * 1.6, p.headR * 1.5, 0.05, 12)
     const coverMat = new THREE.MeshPhongMaterial({
-        color: 0x333340,
+        color: 0x222230,
         flatShading: true,
     })
     const cover = new THREE.Mesh(coverGeo, coverMat)
-    cover.position.set(armLength, p.lightY + p.headR + 0.02, 0)
-    cover.rotation.x = Math.PI // 逆さま
+    cover.position.y = p.poleH + 0.15 + 0.2 + 0.025
     lightGroup.add(cover)
 
-    // PointLight で地面を照らす
-    const pointLight = new THREE.PointLight(lampColor, p.lightIntensity, p.lightDist)
-    pointLight.position.set(armLength, p.lightY - 0.05, 0)
+    // PointLight で周囲を照らす (位置はランプの中心)
+    const pointLight = new THREE.PointLight(Math.random() > 0.5 ? 0xffeedd : 0xffffff, p.lightIntensity, p.lightDist)
+    pointLight.position.y = p.poleH + 0.25
     pointLight.castShadow = false // パフォーマンスのため
     lightGroup.add(pointLight)
 
@@ -76,7 +75,7 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
 
     lightGroup.userData.type = 'streetlight'
     lightGroup.position.set(x, 0, z)
-    lightGroup.rotation.y = Math.random() * Math.PI * 2
+    lightGroup.rotation.y = rotY
 
     scene.add(lightGroup)
     return lightGroup
@@ -89,21 +88,21 @@ export function createStreetLights(scene: THREE.Scene): THREE.Group[] {
     const lights: THREE.Group[] = []
 
     // 大きな街路灯（主要通り沿い）
-    lights.push(makeStreetLight(scene, -3.5, 2.0, 'large'))
-    lights.push(makeStreetLight(scene, 3.5, 2.0, 'large'))
-    lights.push(makeStreetLight(scene, -3.5, -3.0, 'large'))
-    lights.push(makeStreetLight(scene, 3.5, -3.0, 'large'))
+    lights.push(makeStreetLight(scene, -3.5, 2.0, 'large', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, 3.5, 2.0, 'large', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, -3.5, -3.0, 'large', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, 3.5, -3.0, 'large', Math.random() * Math.PI * 2))
 
     // 中くらいの街路灯
-    lights.push(makeStreetLight(scene, 0, 5.0, 'medium'))
-    lights.push(makeStreetLight(scene, -6.0, 0, 'medium'))
-    lights.push(makeStreetLight(scene, 6.0, 0, 'medium'))
-    lights.push(makeStreetLight(scene, 0, -6.0, 'medium'))
+    lights.push(makeStreetLight(scene, 0, 5.0, 'medium', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, -6.0, 0, 'medium', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, 6.0, 0, 'medium', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, 0, -6.0, 'medium', Math.random() * Math.PI * 2))
 
     // 小さな街路灯（路地裏）
-    lights.push(makeStreetLight(scene, -1.5, 6.0, 'small'))
-    lights.push(makeStreetLight(scene, 5.0, 5.0, 'small'))
-    lights.push(makeStreetLight(scene, -5.0, -5.0, 'small'))
+    lights.push(makeStreetLight(scene, -1.5, 6.0, 'small', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, 5.0, 5.0, 'small', Math.random() * Math.PI * 2))
+    lights.push(makeStreetLight(scene, -5.0, -5.0, 'small', Math.random() * Math.PI * 2))
 
     return lights
 }

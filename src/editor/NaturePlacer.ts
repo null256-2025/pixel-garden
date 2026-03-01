@@ -2,23 +2,29 @@ import * as THREE from 'three';
 import { TerrainSculptor } from './TerrainSculptor';
 import { makeStreetLight, makeGroundDetail } from '../objects/Trees';
 import { makeNeonSign } from '../objects/Flowerbeds';
+import {
+    makeTallTower, makeSlimTower, makeWideLow, makeMediumA, makeMediumB,
+    makeShopFront, makeOfficeBlock, makeApartment, makeMiniBox, makeCornerBldg
+} from '../objects/House';
 import { GrowthManager } from './GrowthManager';
 import { CommandHistory } from './CommandHistory';
 
-export type CityToolType = 'StreetLight' | 'NeonSign';
+export type CityToolType = 'StreetLight' | 'NeonSign' | 'TallTower' | 'SlimTower' | 'WideLow' | 'MediumA' | 'MediumB' | 'ShopFront' | 'OfficeBlock' | 'Apartment' | 'MiniBox' | 'CornerBldg';
 
 export class NaturePlacer {
     private raycaster = new THREE.Raycaster();
     private mouse = new THREE.Vector2();
     private currentTool: CityToolType | null = null;
+    private currentRotation: number = 0;
 
     private groundMesh: THREE.Object3D | null = null;
 
     // Track placed objects so they can ride the terrain
     private trackingObjects: THREE.Object3D[] = [];
 
-    // Simple cursor mesh to show where we are placing
-    private cursorMesh: THREE.Mesh;
+    // Group cursor to show footprint
+    private cursorGroup: THREE.Group;
+    private cursorFootprint: THREE.Mesh;
 
     constructor(
         private camera: THREE.Camera,
@@ -27,16 +33,28 @@ export class NaturePlacer {
         private terrainSculptor: TerrainSculptor,
         private growthManager: GrowthManager
     ) {
-        // Setup placement cursor
-        const cursorGeo = new THREE.CylinderGeometry(0.2, 0.2, 0.05, 12);
+        // Setup placement cursor base footprint
+        const footprintGeo = new THREE.BoxGeometry(1, 0.05, 1);
         const cursorMat = new THREE.MeshBasicMaterial({ color: 0x6644ff, transparent: true, opacity: 0.5, depthTest: false });
-        this.cursorMesh = new THREE.Mesh(cursorGeo, cursorMat);
-        this.cursorMesh.visible = false;
-        this.cursorMesh.renderOrder = 999;
-        this.scene.add(this.cursorMesh);
+        this.cursorFootprint = new THREE.Mesh(footprintGeo, cursorMat);
+        this.cursorFootprint.position.y = 0;
+
+        this.cursorGroup = new THREE.Group();
+        this.cursorGroup.add(this.cursorFootprint);
+        this.cursorGroup.visible = false;
+        this.cursorGroup.renderOrder = 999;
+        this.scene.add(this.cursorGroup);
 
         domElement.addEventListener('pointerdown', this.onPointerDown.bind(this));
         domElement.addEventListener('pointermove', this.onPointerMove.bind(this));
+
+        // Listen for keyboard rotation (R key)
+        document.addEventListener('keydown', (e) => {
+            if (this.currentTool && e.key.toLowerCase() === 'r') {
+                this.currentRotation -= Math.PI / 4; // Rotate 45 degrees
+                this.cursorGroup.rotation.y = this.currentRotation;
+            }
+        });
 
         // Listen for terrain changes to adjust our objects
         terrainSculptor.onTerrainUpdate((sculptor) => {
@@ -57,8 +75,32 @@ export class NaturePlacer {
     public setTool(tool: CityToolType | null) {
         this.currentTool = tool;
         if (!tool) {
-            this.cursorMesh.visible = false;
+            this.cursorGroup.visible = false;
+        } else {
+            this.updateCursorSize(tool);
         }
+    }
+
+    private updateCursorSize(tool: CityToolType) {
+        let w = 1, d = 1;
+        switch (tool) {
+            case 'TallTower': w = 3.0; d = 3.0; break;
+            case 'SlimTower': w = 1.5; d = 1.5; break;
+            case 'WideLow': w = 4.0; d = 2.5; break;
+            case 'MediumA': w = 2.0; d = 2.0; break;
+            case 'MediumB': w = 2.5; d = 2.0; break;
+            case 'ShopFront': w = 3.0; d = 2.0; break;
+            case 'OfficeBlock': w = 2.5; d = 2.5; break;
+            case 'Apartment': w = 2.0; d = 3.0; break;
+            case 'MiniBox': w = 1.5; d = 1.0; break;
+            case 'CornerBldg': w = 2.0; d = 2.0; break;
+            case 'StreetLight': w = 0.4; d = 0.4; break;
+            case 'NeonSign': w = 0.8; d = 0.8; break;
+        }
+
+        // Recreate geometry to match the new size
+        this.cursorFootprint.geometry.dispose();
+        this.cursorFootprint.geometry = new THREE.BoxGeometry(w, 0.05, d);
     }
 
     private updateMouse(event: PointerEvent) {
@@ -81,7 +123,7 @@ export class NaturePlacer {
 
     private onPointerMove(event: PointerEvent) {
         if (!this.currentTool) {
-            this.cursorMesh.visible = false;
+            this.cursorGroup.visible = false;
             return;
         }
 
@@ -89,12 +131,13 @@ export class NaturePlacer {
         const hitPoint = this.getIntersection();
 
         if (hitPoint) {
-            this.cursorMesh.visible = true;
-            this.cursorMesh.position.copy(hitPoint);
+            this.cursorGroup.visible = true;
+            this.cursorGroup.position.copy(hitPoint);
+            this.cursorGroup.rotation.y = this.currentRotation;
             // Snap to exact ground height to avoid z-fighting or floating
-            this.cursorMesh.position.y = this.terrainSculptor.getGroundHeightAtXZ(hitPoint.x, hitPoint.z) + 0.05;
+            this.cursorGroup.position.y = this.terrainSculptor.getGroundHeightAtXZ(hitPoint.x, hitPoint.z) + 0.05;
         } else {
-            this.cursorMesh.visible = false;
+            this.cursorGroup.visible = false;
         }
     }
 
@@ -114,18 +157,40 @@ export class NaturePlacer {
         let obj: THREE.Object3D | null = null;
 
         if (this.currentTool === 'StreetLight') {
-            // ランダムに small or medium の街路灯を配置
-            const size = Math.random() > 0.5 ? 'small' : 'medium';
-            obj = makeStreetLight(this.scene, pos.x, pos.z, size);
+            // エディタで配置する街灯は常に 'medium' サイズで統一する
+            obj = makeStreetLight(this.scene, pos.x, pos.z, 'medium');
             obj.position.copy(pos);
         } else if (this.currentTool === 'NeonSign') {
             const signW = 0.5 + Math.random() * 0.4;
             const signH = 0.3 + Math.random() * 0.4;
             obj = makeNeonSign(this.scene, pos.x, pos.z, signW, signH, Math.random() * Math.PI * 2);
             obj.position.copy(pos);
+        } else if (this.currentTool === 'TallTower') {
+            obj = makeTallTower(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'SlimTower') {
+            obj = makeSlimTower(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'WideLow') {
+            obj = makeWideLow(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'MediumA') {
+            obj = makeMediumA(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'MediumB') {
+            obj = makeMediumB(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'ShopFront') {
+            obj = makeShopFront(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'OfficeBlock') {
+            obj = makeOfficeBlock(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'Apartment') {
+            obj = makeApartment(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'MiniBox') {
+            obj = makeMiniBox(this.scene, pos.x, pos.z);
+        } else if (this.currentTool === 'CornerBldg') {
+            obj = makeCornerBldg(this.scene, pos.x, pos.z);
         }
 
         if (obj) {
+            // Update position to conform exactly to pointer
+            obj.position.copy(pos);
+            obj.rotation.y = this.currentRotation;
             this.trackingObjects.push(obj);
 
             const placedObj = obj;
@@ -150,6 +215,6 @@ export class NaturePlacer {
             this.scene.remove(obj);
         });
         this.trackingObjects = [];
-        this.cursorMesh.visible = false;
+        this.cursorGroup.visible = false;
     }
 }

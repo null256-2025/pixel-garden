@@ -33,10 +33,9 @@ function pickNeon(): number {
 
 // --- 壁面マテリアル生成 ---
 function makeWallMaterial(): THREE.MeshPhongMaterial {
-    const base = 0x2a2a3a
-    const variation = Math.floor(Math.random() * 0x101018)
+    const base = 0x242434 // 固定のダークネイビー色に統一
     return new THREE.MeshPhongMaterial({
-        color: base + variation,
+        color: base,
         flatShading: true,
     })
 }
