@@ -1,12 +1,12 @@
 import * as THREE from 'three';
 import { TerrainSculptor } from './TerrainSculptor';
-import { makeStreetLight, makeGroundDetail } from '../objects/Trees';
-import { makeNeonSign } from '../objects/Flowerbeds';
+import { makeStreetLight, makeGroundDetail } from '../objects/StreetProps';
+import { makeNeonSign } from '../objects/NeonSigns';
 import {
     makeTallTower, makeSlimTower, makeWideLow, makeMediumA, makeMediumB,
     makeShopFront, makeOfficeBlock, makeApartment, makeMiniBox, makeCornerBldg
-} from '../objects/House';
-import { GrowthManager } from './GrowthManager';
+} from '../objects/Buildings';
+import { SpawnManager } from './SpawnManager';
 import { NeonManager } from '../managers/NeonManager';
 import { CommandHistory } from './CommandHistory';
 
@@ -32,7 +32,7 @@ export class NaturePlacer {
         private scene: THREE.Scene,
         private domElement: HTMLElement,
         private terrainSculptor: TerrainSculptor,
-        private growthManager: GrowthManager,
+        private spawnManager: SpawnManager,
         private neonManager: NeonManager
     ) {
         // Setup placement cursor base footprint
@@ -66,8 +66,8 @@ export class NaturePlacer {
 
     public initTracking(trackingArray: THREE.Object3D[]) {
         this.trackingObjects = trackingArray;
-        // Pass connection up to growth manager so spawning binds them
-        this.growthManager.registerTrackingArray(this.trackingObjects);
+        // Pass connection up to spawn manager so spawning binds them
+        this.spawnManager.registerTrackingArray(this.trackingObjects);
     }
 
     public setGround(ground: THREE.Object3D) {

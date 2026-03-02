@@ -1,17 +1,16 @@
 import * as THREE from 'three';
-import { RiverGenerator } from './generators/RiverGenerator';
 import { PathGenerator } from './generators/PathGenerator';
 import { CommandHistory } from './CommandHistory';
 import { TerrainSculptor } from './TerrainSculptor';
 
-export type ToolType = 'River' | 'Path' | 'Road' | 'Crosswalk' | 'Raise' | 'Lower';
+export type ToolType = 'Path' | 'Road' | 'Crosswalk' | 'Raise' | 'Lower';
 
 export class PathDrawer {
     private raycaster = new THREE.Raycaster();
     private mouse = new THREE.Vector2();
     private isDrawing = false;
     private currentPath: THREE.Vector3[] = [];
-    private currentTool: ToolType | null = 'River';
+    private currentTool: ToolType | null = 'Road';
 
     // Preview line during drawing
     private lineGeo = new THREE.BufferGeometry();
@@ -21,7 +20,6 @@ export class PathDrawer {
     // Ground object to raycast against
     private groundMesh: THREE.Object3D | null = null;
 
-    private riverGenerator: RiverGenerator;
     private pathGenerator: PathGenerator;
     private terrainSculptor: TerrainSculptor | null = null;
 
@@ -30,7 +28,6 @@ export class PathDrawer {
         private scene: THREE.Scene,
         private domElement: HTMLElement
     ) {
-        this.riverGenerator = new RiverGenerator(scene);
         this.pathGenerator = new PathGenerator(scene);
 
         this.lineMesh.renderOrder = 999;
@@ -49,12 +46,6 @@ export class PathDrawer {
 
     public setTerrainSculptor(sculptor: TerrainSculptor) {
         this.terrainSculptor = sculptor;
-
-        // Listen for terrain updates (e.g. from the sculptor tool or undo actions)
-        // to adjust river heights dynamically to stay inside their carved trench or on top of raised ground
-        this.terrainSculptor.onTerrainUpdate((s) => {
-            this.riverGenerator.rebuildAll((x, z) => s.getGroundHeightAtXZ(x, z));
-        });
     }
 
     public setTool(tool: ToolType | null) {
@@ -64,9 +55,7 @@ export class PathDrawer {
             return;
         }
 
-        if (tool === 'River') {
-            this.lineMat.color.setHex(0x60a5fa); // Blue preview
-        } else if (tool === 'Path') {
+        if (tool === 'Path') {
             this.lineMat.color.setHex(0xc4b28f); // Path preview
         } else if (tool === 'Road') {
             this.lineMat.color.setHex(0xffff44); // Road preview (yellow)
@@ -100,7 +89,7 @@ export class PathDrawer {
     }
 
     private onPointerDown(event: PointerEvent) {
-        if (event.button !== 0 || !['River', 'Path', 'Road', 'Crosswalk'].includes(this.currentTool!)) return; // Only draw on left click with valid tool
+        if (event.button !== 0 || !['Path', 'Road', 'Crosswalk'].includes(this.currentTool!)) return; // Only draw on left click with valid tool
         this.updateMouse(event);
         const hitPoint = this.getIntersection();
 
@@ -167,26 +156,7 @@ export class PathDrawer {
         let generatedMesh: THREE.Mesh | null = null;
         let terrainSnapshot: any = null;
 
-        if (this.currentTool === 'River') {
-            // Take snapshot of terrain before carving
-            if (this.terrainSculptor) {
-                terrainSnapshot = this.terrainSculptor.getSnapshot();
-
-                // Carve the trench
-                const trenchRadius = 0.6; // Slightly wider than river (0.8 / 2 = 0.4)
-                const trenchDepth = 0.2;
-                this.terrainSculptor.carveTrench(this.currentPath, trenchRadius, trenchDepth);
-            }
-
-            // We removed the manual path adjustment here so RiverGenerator can calculate 
-            // the physics-based water level (lakes, waterfalls) directly.
-
-            const getHeight = (x: number, z: number) => {
-                return this.terrainSculptor ? this.terrainSculptor.getGroundHeightAtXZ(x, z) : 0;
-            };
-
-            generatedMesh = this.riverGenerator.generate(this.currentPath, getHeight);
-        } else if (this.currentTool === 'Path' || this.currentTool === 'Road' || this.currentTool === 'Crosswalk') {
+        if (this.currentTool === 'Path' || this.currentTool === 'Road' || this.currentTool === 'Crosswalk') {
             const toolType = (this.currentTool === 'Path') ? 'Road' : this.currentTool; // Default to road if path
             generatedMesh = this.pathGenerator.generate(this.currentPath, toolType);
         }
@@ -196,12 +166,7 @@ export class PathDrawer {
             const tool = this.currentTool;
             const savedSnapshot = terrainSnapshot;
             CommandHistory.push(() => {
-                if (tool === 'River') {
-                    this.riverGenerator.remove(mesh);
-                    if (this.terrainSculptor && savedSnapshot) {
-                        this.terrainSculptor.restoreSnapshot(savedSnapshot);
-                    }
-                } else if (tool === 'Path' || tool === 'Road' || tool === 'Crosswalk') {
+                if (tool === 'Path' || tool === 'Road' || tool === 'Crosswalk') {
                     this.pathGenerator.remove(mesh);
                 }
             });
@@ -209,7 +174,6 @@ export class PathDrawer {
     }
 
     public clearAll() {
-        this.riverGenerator.clear();
         this.pathGenerator.clear();
     }
 }

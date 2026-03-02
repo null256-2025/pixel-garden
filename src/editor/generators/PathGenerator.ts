@@ -7,7 +7,7 @@ export class PathGenerator {
     constructor(private scene: THREE.Scene) {
         // Flat shading dirt/stone path material
         this.material = new THREE.MeshPhongMaterial({
-            color: 0xc4b28f, // Matching pathMat color in House.ts
+            color: 0xc4b28f, // Matching pathMat color in Buildings.ts
             flatShading: true,
         });
     }

@@ -8,7 +8,7 @@ import { NaturePlacer } from "./editor/NaturePlacer"
 import { DestroyerTool } from "./editor/DestroyerTool"
 import { DrawPalette } from "./editor/DrawPalette"
 
-import { GrowthManager } from "./editor/GrowthManager"
+import { SpawnManager } from "./editor/SpawnManager"
 import { NeonManager } from "./managers/NeonManager"
 
 // =========================================
@@ -42,9 +42,9 @@ const pathDrawer = new PathDrawer(camera, scene, domElement)
 pathDrawer.setGround(ground)
 pathDrawer.setTerrainSculptor(terrainSculptor)
 
-// GrowthManager は、将来的に光る木（Neon Tree）などを育てるために使うかも
-const growthManager = new GrowthManager(scene)
-const naturePlacer = new NaturePlacer(camera, scene, domElement, terrainSculptor, growthManager, neonManager)
+// SpawnManager is used for managing the lifecycle of elements that appear over time
+const spawnManager = new SpawnManager(scene)
+const naturePlacer = new NaturePlacer(camera, scene, domElement, terrainSculptor, spawnManager, neonManager)
 naturePlacer.setGround(ground)
 
 // DestroyerTool には暫定の physics (null) を渡す（本来は PhysicsWorld だが、今回は物理エンジン統合前なのでスタブ化するか後回し。ビル破壊用に後で修正する）
@@ -97,4 +97,5 @@ scene.add(new THREE.HemisphereLight(0x333355, 0x1a1a33, 0.5))
 // --- アニメーション開始 ---
 engine.start((time, dt) => {
     neonManager.update(time, dt)
+    spawnManager.update(time)
 })
