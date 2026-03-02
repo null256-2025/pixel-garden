@@ -10,6 +10,9 @@ import { DrawPalette } from "./editor/DrawPalette"
 
 import { SpawnManager } from "./editor/SpawnManager"
 import { NeonManager } from "./managers/NeonManager"
+import { TrafficManager } from "./managers/TrafficManager"
+import { CrowdManager } from "./managers/CrowdManager"
+import { createSingleTestCar } from "./objects/Vehicles"
 
 // =========================================
 //  Neon City — メインエントリポイント
@@ -47,12 +50,72 @@ const spawnManager = new SpawnManager(scene)
 const naturePlacer = new NaturePlacer(camera, scene, domElement, terrainSculptor, spawnManager, neonManager)
 naturePlacer.setGround(ground)
 
-// DestroyerTool には暫定の physics (null) を渡す（本来は PhysicsWorld だが、今回は物理エンジン統合前なのでスタブ化するか後回し。ビル破壊用に後で修正する）
-// ひとまず null as any で渡し、trackingObjects を空配列で渡しておく
+// destroyerTool には暫定の physics (null) を渡す
 const destroyerTool = new DestroyerTool(camera, scene, domElement, null as any, [])
 
 // パレットUIの生成
 new DrawPalette(pathDrawer, terrainSculptor, naturePlacer, destroyerTool)
+
+// --- Traffic (車) の初期設定 ---
+const trafficManager = new TrafficManager(scene, 100)
+
+// デバッグ・テスト用のテスト道路パス（都市中心を囲む大きな角丸四角形）を生成
+const roadPoints = [
+    new THREE.Vector3(5.5, 0, 5.5),
+    new THREE.Vector3(5.5, 0, -5.5),
+    new THREE.Vector3(-5.5, 0, -5.5),
+    new THREE.Vector3(-5.5, 0, 5.5)
+]
+const testRoad = new THREE.CatmullRomCurve3(roadPoints, true, 'centripetal', 0.5)
+
+// 道路パスの視覚化（テスト完了のため非表示）
+const tubeGeom = new THREE.TubeGeometry(testRoad, 64, 0.1, 4, true)
+const tubeMat = new THREE.MeshBasicMaterial({ color: 0x444444, wireframe: true, opacity: 0.3, transparent: true })
+const tubeMesh = new THREE.Mesh(tubeGeom, tubeMat)
+tubeMesh.position.y = 0.05
+tubeMesh.visible = false
+scene.add(tubeMesh)
+
+trafficManager.addPath(testRoad)
+
+// **フェーズ3モデル確認のため一旦車の生成を停止**
+// for (let i = 0; i < 10; i++) {
+//     trafficManager.spawnCar(0)
+// }
+
+// --- Crowd (人) の初期設定 ---
+const crowdManager = new CrowdManager(scene, 100)
+
+// 道路の内側（歩道）を想定した一回り小さいパス
+const sidewalkPoints = [
+    new THREE.Vector3(4.5, 0, 4.5),
+    new THREE.Vector3(4.5, 0, -4.5),
+    new THREE.Vector3(-4.5, 0, -4.5),
+    new THREE.Vector3(-4.5, 0, 4.5)
+]
+const testSidewalk = new THREE.CatmullRomCurve3(sidewalkPoints, true, 'centripetal', 0.5)
+
+// 歩道パスの視覚化（テスト完了のため非表示）
+const sidewalkTubeGeom = new THREE.TubeGeometry(testSidewalk, 64, 0.05, 4, true)
+const sidewalkTubeMat = new THREE.MeshBasicMaterial({ color: 0x44aa44, wireframe: true, opacity: 0.3, transparent: true })
+const sidewalkTubeMesh = new THREE.Mesh(sidewalkTubeGeom, sidewalkTubeMat)
+sidewalkTubeMesh.position.y = 0.05
+sidewalkTubeMesh.visible = false
+scene.add(sidewalkTubeMesh)
+
+crowdManager.addPath(testSidewalk)
+
+// 人を生成
+for (let i = 0; i < 40; i++) {
+    crowdManager.spawnPerson(0)
+}
+
+// =========================================
+// フェーズ3: 車種モデル確認用の単体配置
+// =========================================
+const testCar = createSingleTestCar()
+testCar.position.set(0, 0, 0) // 中心に配置
+scene.add(testCar)
 
 // --- ライティング（夜景向け） ---
 // アンビエント：少し明るめにしてテスト時の視認性を確保
@@ -98,4 +161,6 @@ scene.add(new THREE.HemisphereLight(0x333355, 0x1a1a33, 0.5))
 engine.start((time, dt) => {
     neonManager.update(time, dt)
     spawnManager.update(time)
+    trafficManager.update(dt)
+    crowdManager.update(dt)
 })
