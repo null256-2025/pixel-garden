@@ -7,6 +7,7 @@ import {
     makeShopFront, makeOfficeBlock, makeApartment, makeMiniBox, makeCornerBldg
 } from '../objects/House';
 import { GrowthManager } from './GrowthManager';
+import { NeonManager } from '../managers/NeonManager';
 import { CommandHistory } from './CommandHistory';
 
 export type CityToolType = 'StreetLight' | 'NeonSign' | 'TallTower' | 'SlimTower' | 'WideLow' | 'MediumA' | 'MediumB' | 'ShopFront' | 'OfficeBlock' | 'Apartment' | 'MiniBox' | 'CornerBldg';
@@ -31,7 +32,8 @@ export class NaturePlacer {
         private scene: THREE.Scene,
         private domElement: HTMLElement,
         private terrainSculptor: TerrainSculptor,
-        private growthManager: GrowthManager
+        private growthManager: GrowthManager,
+        private neonManager: NeonManager
     ) {
         // Setup placement cursor base footprint
         const footprintGeo = new THREE.BoxGeometry(1, 0.05, 1);
@@ -158,33 +160,33 @@ export class NaturePlacer {
 
         if (this.currentTool === 'StreetLight') {
             // エディタで配置する街灯は常に 'medium' サイズで統一する
-            obj = makeStreetLight(this.scene, pos.x, pos.z, 'medium');
+            obj = makeStreetLight(this.scene, pos.x, pos.z, 'medium', 0, this.neonManager);
             obj.position.copy(pos);
         } else if (this.currentTool === 'NeonSign') {
             const signW = 0.5 + Math.random() * 0.4;
             const signH = 0.3 + Math.random() * 0.4;
-            obj = makeNeonSign(this.scene, pos.x, pos.z, signW, signH, Math.random() * Math.PI * 2);
+            obj = makeNeonSign(this.scene, pos.x, pos.z, signW, signH, Math.random() * Math.PI * 2, this.neonManager);
             obj.position.copy(pos);
         } else if (this.currentTool === 'TallTower') {
-            obj = makeTallTower(this.scene, pos.x, pos.z);
+            obj = makeTallTower(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'SlimTower') {
-            obj = makeSlimTower(this.scene, pos.x, pos.z);
+            obj = makeSlimTower(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'WideLow') {
-            obj = makeWideLow(this.scene, pos.x, pos.z);
+            obj = makeWideLow(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'MediumA') {
-            obj = makeMediumA(this.scene, pos.x, pos.z);
+            obj = makeMediumA(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'MediumB') {
-            obj = makeMediumB(this.scene, pos.x, pos.z);
+            obj = makeMediumB(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'ShopFront') {
-            obj = makeShopFront(this.scene, pos.x, pos.z);
+            obj = makeShopFront(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'OfficeBlock') {
-            obj = makeOfficeBlock(this.scene, pos.x, pos.z);
+            obj = makeOfficeBlock(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'Apartment') {
-            obj = makeApartment(this.scene, pos.x, pos.z);
+            obj = makeApartment(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'MiniBox') {
-            obj = makeMiniBox(this.scene, pos.x, pos.z);
+            obj = makeMiniBox(this.scene, pos.x, pos.z, this.neonManager);
         } else if (this.currentTool === 'CornerBldg') {
-            obj = makeCornerBldg(this.scene, pos.x, pos.z);
+            obj = makeCornerBldg(this.scene, pos.x, pos.z, this.neonManager);
         }
 
         if (obj) {

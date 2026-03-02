@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { NeonManager } from "../managers/NeonManager"
 
 // --- ネオンカラーパレット ---
 const NEON_COLORS = [
@@ -20,7 +21,8 @@ export function makeNeonSign(
     scene: THREE.Scene,
     x: number, z: number,
     signW: number, signH: number,
-    rotY: number = 0
+    rotY: number = 0,
+    neonManager?: NeonManager
 ) {
     const signGroup = new THREE.Group()
 
@@ -54,12 +56,26 @@ export function makeNeonSign(
 
     // ネオンテキスト風の光るバー（看板面にネオンチューブを配置）
     const neonColor = pickNeon()
-    const neonMat = new THREE.MeshPhongMaterial({
+    let neonMat = new THREE.MeshPhongMaterial({
         color: neonColor,
         emissive: neonColor,
         emissiveIntensity: 1.0,
         flatShading: true,
     })
+
+    // 看板のフレーム（縁取り）
+    let frameMat = new THREE.MeshPhongMaterial({
+        color: neonColor,
+        emissive: neonColor,
+        emissiveIntensity: 0.5,
+        flatShading: true,
+    })
+
+    if (neonManager) {
+        // ネオンサインはチカチカ・グリッチさせる
+        neonMat = neonManager.register(neonMat, { type: 'glitch', baseIntensity: 1.0 }, true) as THREE.MeshPhongMaterial
+        frameMat = neonManager.register(frameMat, { type: 'steady', baseIntensity: 0.5 }, true) as THREE.MeshPhongMaterial
+    }
 
     // 横線（ネオンチューブ）を複数配置
     const tubeCount = 1 + Math.floor(Math.random() * 3)
@@ -94,13 +110,7 @@ export function makeNeonSign(
         signGroup.add(vTube)
     }
 
-    // 看板のフレーム（縁取り）
-    const frameMat = new THREE.MeshPhongMaterial({
-        color: neonColor,
-        emissive: neonColor,
-        emissiveIntensity: 0.5,
-        flatShading: true,
-    })
+    // (フレームの生成前処理で frameMat の再定義は削除したのでココは何もしない)
     const frameT = 0.02
     // 上辺
     signGroup.add(makeFrameBar(signW + frameT * 2, frameT, boardDepth + 0.01,

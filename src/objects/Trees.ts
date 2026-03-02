@@ -1,7 +1,8 @@
 import * as THREE from "three"
+import { NeonManager } from "../managers/NeonManager"
 
 // --- 街路灯を1本作る関数 ---
-export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 'small' | 'medium' | 'large', rotY: number = 0) {
+export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 'small' | 'medium' | 'large', rotY: number = 0, neonManager?: NeonManager) {
     const lightGroup = new THREE.Group()
 
     // ポールのマテリアル
@@ -44,8 +45,20 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
         opacity: 0.9,
     })
 
+    let lampIntensity = 0.8;
+    let flickerType: 'steady' | 'buggy' | 'broken' = 'steady';
+
+    // 一部の街灯を壊れかけにする
+    const rand = Math.random();
+    if (rand < 0.05) {
+        flickerType = 'buggy'; // たまにパチパチする
+        lampIntensity = 0.6;
+    } else if (rand < 0.08) {
+        flickerType = 'broken'; // 完全に壊れかけていてたまに光る
+    }
+
     const lampGeo = new THREE.CylinderGeometry(p.headR * 1.5, p.headR, 0.2, 12)
-    const lamp = new THREE.Mesh(lampGeo, lampMat)
+    const lamp = new THREE.Mesh(lampGeo, neonManager ? neonManager.register(lampMat, { type: flickerType as any, baseIntensity: lampIntensity }, true) : lampMat)
     lamp.position.y = p.poleH + 0.15 + 0.1
     lightGroup.add(lamp)
 
@@ -59,12 +72,7 @@ export function makeStreetLight(scene: THREE.Scene, x: number, z: number, size: 
     cover.position.y = p.poleH + 0.15 + 0.2 + 0.025
     lightGroup.add(cover)
 
-    // PointLight で周囲を照らす (位置はランプの中心)
-    // 画像のように真下がうっすら光るように距離と強さを調整
-    const pointLight = new THREE.PointLight(lampColor, p.lightIntensity * 0.5, p.lightDist * 0.7)
-    pointLight.position.y = p.poleH + 0.1
-    pointLight.castShadow = false // パフォーマンスのため
-    lightGroup.add(pointLight)
+
 
     // ポールの根元のディテール（ベースプレート）
     const basePlate = new THREE.Mesh(

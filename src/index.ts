@@ -9,6 +9,7 @@ import { DestroyerTool } from "./editor/DestroyerTool"
 import { DrawPalette } from "./editor/DrawPalette"
 
 import { GrowthManager } from "./editor/GrowthManager"
+import { NeonManager } from "./managers/NeonManager"
 
 // =========================================
 //  Neon City — メインエントリポイント
@@ -26,10 +27,14 @@ const engine = new PixelEngine({
 const { scene, camera, renderer } = engine
 const domElement = renderer.domElement
 
+const neonManager = new NeonManager()
+
 // --- シーンオブジェクトの配置 ---
 const ground = createGround(scene)
 
-// --- エディタツールの初期化 ---
+// ビルや街灯は NaturePlacer 経由で配置されるか、あるいは事前に手動配置される場合
+// NeonManager を適用するために、ツール初期化に渡す
+
 const terrainSculptor = new TerrainSculptor(camera, domElement)
 terrainSculptor.setGround(ground)
 
@@ -39,7 +44,7 @@ pathDrawer.setTerrainSculptor(terrainSculptor)
 
 // GrowthManager は、将来的に光る木（Neon Tree）などを育てるために使うかも
 const growthManager = new GrowthManager(scene)
-const naturePlacer = new NaturePlacer(camera, scene, domElement, terrainSculptor, growthManager)
+const naturePlacer = new NaturePlacer(camera, scene, domElement, terrainSculptor, growthManager, neonManager)
 naturePlacer.setGround(ground)
 
 // DestroyerTool には暫定の physics (null) を渡す（本来は PhysicsWorld だが、今回は物理エンジン統合前なのでスタブ化するか後回し。ビル破壊用に後で修正する）
@@ -90,4 +95,6 @@ scene.add(moonLight)
 scene.add(new THREE.HemisphereLight(0x333355, 0x1a1a33, 0.5))
 
 // --- アニメーション開始 ---
-engine.start()
+engine.start((time, dt) => {
+    neonManager.update(time, dt)
+})

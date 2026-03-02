@@ -1,4 +1,5 @@
 import * as THREE from "three"
+import { NeonManager } from "../managers/NeonManager"
 
 // =============================================
 //  ネオンシティ ビル生成モジュール
@@ -46,6 +47,7 @@ function addWindows(
     bw: number, bh: number, bd: number,
     faceAxis: 'x' | 'z',
     neonColor: number,
+    neonManager?: NeonManager
 ) {
     // 窓の縦列を作成（大小ランダム）
     const faceSize = faceAxis === 'z' ? bw : bd
@@ -99,25 +101,62 @@ function addWindows(
                 faceAxis === 'z' ? depth : winW
             )
 
-            const halfFace = faceSize / 2
-            const posAlong = -halfFace + colSpacing * (c + 1)
-            const posY = 0.5 + r * rowSpacing
+            if (neonManager && intensity > 0) {
+                // 窓のフリッカー設定（ユーザー要望を反映）
+                // - 大多数はフリッカーしない（あるいはごく僅かな揺らぎのみを残すなら新しいsteadyを作るが、今回はパチパチ感重視のため基本は登録しないか、完全に安定させる）
+                // - 一部の窓は 'buggy'（蛍光灯の寿命のようにパチパチ消えかかる）
+                // - ごく一部の窓は 'broken'（基本消えていてたまにチカッと点く）
 
-            if (posY > bh - 0.2) continue
-
-            for (const sign of [1, -1]) {
-                const win = new THREE.Mesh(winGeo, winMat)
-                if (faceAxis === 'z') {
-                    win.position.set(posAlong, posY, sign * (bd / 2 + depth / 2))
-                } else {
-                    win.position.set(sign * (bw / 2 + depth / 2), posY, posAlong)
+                let flickerType: 'buggy' | 'broken' | null = null;
+                const rand = Math.random();
+                if (rand < 0.05) {
+                    flickerType = 'buggy'; // 5%の窓がパチパチする
+                } else if (rand < 0.08) {
+                    flickerType = 'broken'; // 3%の窓が壊れかけている
                 }
-                group.add(win)
+
+                if (flickerType) {
+                    const clonedMat = neonManager.register(winMat, {
+                        type: flickerType,
+                        baseIntensity: intensity,
+                    }, true)
+
+                    const halfFace = faceSize / 2
+                    const posAlong = -halfFace + colSpacing * (c + 1)
+                    const posY = 0.5 + r * rowSpacing
+
+                    if (posY > bh - 0.2) continue
+
+                    for (const sign of [1, -1]) {
+                        const win = new THREE.Mesh(winGeo, clonedMat)
+                        if (faceAxis === 'z') {
+                            win.position.set(posAlong, posY, sign * (bd / 2 + depth / 2))
+                        } else {
+                            win.position.set(sign * (bw / 2 + depth / 2), posY, posAlong)
+                        }
+                        group.add(win)
+                    }
+                } else {
+                    const halfFace = faceSize / 2
+                    const posAlong = -halfFace + colSpacing * (c + 1)
+                    const posY = 0.5 + r * rowSpacing
+
+                    if (posY > bh - 0.2) continue
+
+                    for (const sign of [1, -1]) {
+                        const win = new THREE.Mesh(winGeo, winMat)
+                        if (faceAxis === 'z') {
+                            win.position.set(posAlong, posY, sign * (bd / 2 + depth / 2))
+                        } else {
+                            win.position.set(sign * (bw / 2 + depth / 2), posY, posAlong)
+                        }
+                        group.add(win)
+                    }
+                }
             }
         }
     }
 }
-
 
 
 // --- 屋上ディテール ---
@@ -211,7 +250,8 @@ function addAcBox(group: THREE.Group, w: number, d: number, h: number, detailMat
 // =============================================
 export function makeTallTower(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -230,8 +270,8 @@ export function makeTallTower(
 
     // 窓（4面）
     const neonColor = 0x00ff88 // グリーン
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     // 屋上
     addRooftop(group, w, d, h)
@@ -248,7 +288,8 @@ export function makeTallTower(
 // =============================================
 export function makeSlimTower(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -267,10 +308,10 @@ export function makeSlimTower(
 
     // 窓（4面）
     const neonColor = 0x00ffff // シアン
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
-    addWindows(group, w, h, d, 'z', neonColor) // 裏面
-    addWindows(group, w, h, d, 'x', neonColor) // 右面
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager) // 裏面
+    addWindows(group, w, h, d, 'x', neonColor, neonManager) // 右面
 
     // 屋上（細いのでアンテナを高確率に）
     addRooftop(group, w, d, h)
@@ -286,7 +327,8 @@ export function makeSlimTower(
 // =============================================
 export function makeWideLow(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -305,8 +347,8 @@ export function makeWideLow(
 
     // 窓（4面）
     const neonColor = 0xff8833 // オレンジ
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     // 屋上（広いので室外機を複数）
     addRooftop(group, w, d, h)
@@ -332,7 +374,8 @@ export function makeWideLow(
 // =============================================
 export function makeMediumA(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -351,10 +394,10 @@ export function makeMediumA(
 
     // 窓
     const neonColor = 0xff00ff // マゼンタ
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     // 屋上（標準的）
     addRooftop(group, w, d, h)
@@ -372,7 +415,8 @@ export function makeMediumA(
 // =============================================
 export function makeMediumB(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -387,12 +431,12 @@ export function makeMediumB(
 
     const neonColor = 0xffff00 // イエロー
     // 窓を少し密集させるために addWindows を重ねがけするアプローチ
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     // ちょっと位置をずらしてもう一度窓を追加（窓の密度を上げる）
     const tempGroup = new THREE.Group()
-    addWindows(tempGroup, w, h, d, 'z', neonColor)
+    addWindows(tempGroup, w, h, d, 'z', neonColor, neonManager)
     tempGroup.position.set(0, 0.2, 0)
     group.add(tempGroup)
 
@@ -408,7 +452,8 @@ export function makeMediumB(
 // =============================================
 export function makeShopFront(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -428,8 +473,8 @@ export function makeShopFront(
     // ShopFront は高さ 2.5。1F部分に 1.0 使うので、窓は y=1.0〜2.5 に収めたい。
     // そのため bh を 1.5 として窓を生成する。
     const winGroup = new THREE.Group()
-    addWindows(winGroup, w, 1.5, d, 'z', neonColor)
-    addWindows(winGroup, w, 1.5, d, 'x', neonColor)
+    addWindows(winGroup, w, 1.5, d, 'z', neonColor, neonManager)
+    addWindows(winGroup, w, 1.5, d, 'x', neonColor, neonManager)
     winGroup.position.y = 1.0 // 1Fの分持ち上げる
     group.add(winGroup)
 
@@ -462,7 +507,8 @@ export function makeShopFront(
 // =============================================
 export function makeOfficeBlock(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
 
@@ -476,10 +522,10 @@ export function makeOfficeBlock(
     group.add(body)
 
     const neonColor = 0x6600ff // パープル
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     // 上部に紫の光るラインを1周巻く
     const lineMat = new THREE.MeshPhongMaterial({
@@ -506,7 +552,8 @@ export function makeOfficeBlock(
 // =============================================
 export function makeApartment(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
     const w = 2.0, d = 3.0, h = 3.5
@@ -519,8 +566,8 @@ export function makeApartment(
     group.add(body)
 
     const neonColor = 0xffeedd
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     addRooftop(group, w, d, h)
     group.position.set(x, 0, z)
@@ -534,7 +581,8 @@ export function makeApartment(
 // =============================================
 export function makeMiniBox(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
     const w = 1.5, d = 1.0, h = 1.5
@@ -547,8 +595,8 @@ export function makeMiniBox(
     group.add(body)
 
     const neonColor = 0x00ffff
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', neonColor)
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', neonColor, neonManager)
 
     addRooftop(group, w, d, h)
     group.position.set(x, 0, z)
@@ -562,7 +610,8 @@ export function makeMiniBox(
 // =============================================
 export function makeCornerBldg(
     scene: THREE.Scene,
-    x: number, z: number
+    x: number, z: number,
+    neonManager?: NeonManager
 ): THREE.Group {
     const group = new THREE.Group()
     const w = 2.0, d = 2.0, h = 4.5
@@ -575,8 +624,8 @@ export function makeCornerBldg(
     group.add(body)
 
     const neonColor = 0x00ff88
-    addWindows(group, w, h, d, 'z', neonColor)
-    addWindows(group, w, h, d, 'x', 0xff00ff) // 面によってネオンの色を変える
+    addWindows(group, w, h, d, 'z', neonColor, neonManager)
+    addWindows(group, w, h, d, 'x', 0xff00ff, neonManager) // 面によってネオンの色を変える
 
     // 上部にネオンライン
     const lineMat = new THREE.MeshPhongMaterial({ color: 0xff00ff, emissive: 0xff00ff, emissiveIntensity: 0.8, flatShading: true })
