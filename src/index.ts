@@ -12,7 +12,7 @@ import { SpawnManager } from "./editor/SpawnManager"
 import { NeonManager } from "./managers/NeonManager"
 import { TrafficManager } from "./managers/TrafficManager"
 import { CrowdManager } from "./managers/CrowdManager"
-import { createSingleTestCar } from "./objects/Vehicles"
+import { createSingleTestPedestrian } from "./objects/Pedestrians"
 
 // =========================================
 //  Neon City — メインエントリポイント
@@ -57,7 +57,8 @@ const destroyerTool = new DestroyerTool(camera, scene, domElement, null as any, 
 new DrawPalette(pathDrawer, terrainSculptor, naturePlacer, destroyerTool)
 
 // --- Traffic (車) の初期設定 ---
-const trafficManager = new TrafficManager(scene, 100)
+// 車の最大数を5台に制限
+const trafficManager = new TrafficManager(scene, 5)
 
 // デバッグ・テスト用のテスト道路パス（都市中心を囲む大きな角丸四角形）を生成
 const roadPoints = [
@@ -78,13 +79,11 @@ scene.add(tubeMesh)
 
 trafficManager.addPath(testRoad)
 
-// **フェーズ3モデル確認のため一旦車の生成を停止**
-// for (let i = 0; i < 10; i++) {
-//     trafficManager.spawnCar(0)
-// }
+// 車の生成 (フェーズ3中は自動で初期配置されるため手動ループは削除)
 
 // --- Crowd (人) の初期設定 ---
-const crowdManager = new CrowdManager(scene, 100)
+// 人の最大数を10人に制限
+const crowdManager = new CrowdManager(scene, 10)
 
 // 道路の内側（歩道）を想定した一回り小さいパス
 const sidewalkPoints = [
@@ -105,17 +104,22 @@ scene.add(sidewalkTubeMesh)
 
 crowdManager.addPath(testSidewalk)
 
-// 人を生成
-for (let i = 0; i < 40; i++) {
-    crowdManager.spawnPerson(0)
-}
+// 人を生成 (フェーズ3中は自動で初期配置されるため、ここでの手動ループは削除)
 
 // =========================================
-// フェーズ3: 車種モデル確認用の単体配置
+// フェーズ3: モデル確認用の単体配置
 // =========================================
-const testCar = createSingleTestCar()
-testCar.position.set(0, 0, 0) // 中心に配置
-scene.add(testCar)
+// 車のテストモデルは非表示に
+// const testCar = createSingleTestCar()
+// testCar.position.set(-2, 0, 0) // 中心から少し左へずらす
+// scene.add(testCar)
+
+// モデル確認用の明るいスポットライト
+const testLight = new THREE.SpotLight(0xffffff, 2.0)
+testLight.position.set(0, 5, 5)
+testLight.target.position.set(0, 0, 0)
+scene.add(testLight)
+scene.add(testLight.target)
 
 // --- ライティング（夜景向け） ---
 // アンビエント：少し明るめにしてテスト時の視認性を確保

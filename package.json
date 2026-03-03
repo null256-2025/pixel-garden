@@ -3,6 +3,7 @@
     "version": "1.0.0",
     "license": "MIT",
     "dependencies": {
+        "fflate": "^0.8.2",
         "three": "^0.131.3"
     },
     "scripts": {
